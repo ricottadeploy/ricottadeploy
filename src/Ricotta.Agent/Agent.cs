@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
+using Ricotta.Transport.Messages.Application;
 using Serilog;
 
 namespace Ricotta.Agent
@@ -57,12 +58,31 @@ namespace Ricotta.Agent
             }
             Log.Debug("Authentication successful");
 
-            // client.SendApplicationData(new byte[] { 5, 6, 7 });
-            // var data = client.ReceiveApplicationData();
-            // foreach (var b in data)
-            // {
-            //     Log.Debug($"{b}");
-            // }
+            var agentFileInfo = new AgentFileInfo
+            {
+                FileUri = @"modules\Package\1.0.0\Package.1.0.0.nupkg"
+            };
+            var applicationMessage = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.AgentFileInfo,
+                Data = _serializer.Serialize<AgentFileInfo>(agentFileInfo)
+            };
+            var bytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
+            client.SendApplicationData(bytes);
+
+
+            var data = client.ReceiveApplicationData();
+            var receivedApplicationMessage = _serializer.Deserialize<ApplicationMessage>(data);
+            if (receivedApplicationMessage.Type == ApplicationMessageType.MasterError)
+            {
+                var masterError = _serializer.Deserialize<MasterError>(receivedApplicationMessage.Data);
+                Log.Error($"Error: {masterError.ErrorMessage}");
+            }
+            else if (receivedApplicationMessage.Type == ApplicationMessageType.MasterFileInfo)
+            {
+                var masterFileInfo = _serializer.Deserialize<MasterFileInfo>(receivedApplicationMessage.Data);
+                Log.Debug($"{masterFileInfo.Size}, {masterFileInfo.IsDirectory}, {masterFileInfo.Sha256}");
+            }
         }
 
         private Rsa GetRsaKeys()

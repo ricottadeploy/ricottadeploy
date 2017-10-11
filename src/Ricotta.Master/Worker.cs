@@ -20,6 +20,7 @@ namespace Ricotta.Master
         private Aes _publishAes;
         private readonly SessionCache _sessionCache;
         private readonly ClientAuthInfoCache _clientAuthInfoCache;
+        private readonly FileRepository _fileRepository;
 
         public Worker(int workerId,
                         string workersUrl,
@@ -27,7 +28,8 @@ namespace Ricotta.Master
                         Rsa rsa,
                         Aes publishAes,
                         SessionCache sessionCache,
-                        ClientAuthInfoCache clientAuthInfoCache)
+                        ClientAuthInfoCache clientAuthInfoCache,
+                        FileRepository fileRepository)
         {
             _workerId = workerId;
             _workersUrl = workersUrl;
@@ -36,6 +38,7 @@ namespace Ricotta.Master
             _publishAes = publishAes;
             _sessionCache = sessionCache;
             _clientAuthInfoCache = clientAuthInfoCache;
+            _fileRepository = fileRepository;
             Run();
         }
 
@@ -50,7 +53,7 @@ namespace Ricotta.Master
         private byte[] ProcessApplicationMessages(byte[] message)
         {
             var applicationMessage = _serializer.Deserialize<ApplicationMessage>(message);
-            Log.Debug($"Recevied application message of type {applicationMessage.Type}");
+            Log.Debug($"Received application message of type {applicationMessage.Type}");
             ApplicationMessage response = null;
             switch (applicationMessage.Type)
             {
@@ -88,11 +91,23 @@ namespace Ricotta.Master
         private ApplicationMessage HandleAgentFileInfo(ApplicationMessage message)
         {
             var agentFileInfo = _serializer.Deserialize<AgentFileInfo>(message.Data);
+            FileInfo fileInfo = null;
+            string sha256 = null;
+            try
+            {
+                fileInfo = _fileRepository.GetFileInfo(agentFileInfo.FileUri);
+                sha256 = _fileRepository.GetFileSha256(agentFileInfo.FileUri);
+            }
+            catch (FileNotFoundException)
+            {
+                return GetMasterError("File not found");
+            }
+
             var masterFileInfo = new MasterFileInfo
             {
-                Size = -1,
-                IsDirectory = false,
-                Sha256 = null
+                Size = fileInfo.Length,
+                IsDirectory = (fileInfo.Attributes & FileAttributes.Directory) == FileAttributes.Directory,
+                Sha256 = sha256
             };
             var response = new ApplicationMessage
             {
@@ -105,9 +120,19 @@ namespace Ricotta.Master
         private ApplicationMessage HandleAgentFileChunk(ApplicationMessage message)
         {
             var agentFileChunk = _serializer.Deserialize<AgentFileChunk>(message.Data);
+            byte[] bytes;
+            try
+            {
+                bytes = _fileRepository.GetFileChunk(agentFileChunk.FileUri, agentFileChunk.Offset, agentFileChunk.Size);
+            }
+            catch (FileNotFoundException)
+            {
+                return GetMasterError("File not found");
+            }
+
             var masterFileChunk = new MasterFileChunk
             {
-                Data = null
+                Data = bytes
             };
             var response = new ApplicationMessage
             {
@@ -161,6 +186,20 @@ namespace Ricotta.Master
             _publishAes.RegenerateKey();
             _sessionCache.Clear();
             return null;
+        }
+
+        private ApplicationMessage GetMasterError(string errorMessage)
+        {
+            var masterError = new MasterError
+            {
+                ErrorMessage = errorMessage
+            };
+            var masterErrorMessage = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterError,
+                Data = _serializer.Serialize<MasterError>(masterError)
+            };
+            return masterErrorMessage;
         }
     }
 }

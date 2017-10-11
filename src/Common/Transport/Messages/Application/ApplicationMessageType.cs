@@ -16,7 +16,7 @@ namespace Ricotta.Transport.Messages.Application
         CommandAgentList, MasterAgentList,
         CommandAgentAccept, MasterAgentAccept,
         CommandAgentDeny, MasterAgentDeny,
-        CommandRunDeployment, MasterRunDeployment
-        
+        CommandRunDeployment, MasterRunDeployment,
+        MasterError
     }
 }

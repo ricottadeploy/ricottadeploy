@@ -20,6 +20,7 @@ namespace Ricotta.Master
         private Aes _publishAes;
         private SessionCache _sessionCache;
         private ClientAuthInfoCache _clientAuthInfoCache;
+        private FileRepository _fileRepository;
 
         public Master(IConfigurationRoot config,
                         ISerializer serializer)
@@ -31,6 +32,7 @@ namespace Ricotta.Master
             _publishAes = Aes.Create();
             _sessionCache = new SessionCache();
             _clientAuthInfoCache = new ClientAuthInfoCache();
+            _fileRepository = new FileRepository(_config["filerepository_path"]);
             LoadPreAcceptedAgents();
         }
 
@@ -74,7 +76,8 @@ namespace Ricotta.Master
                                                 _rsa,
                                                 _publishAes,
                                                 _sessionCache,
-                                                _clientAuthInfoCache)).Start();
+                                                _clientAuthInfoCache,
+                                                _fileRepository)).Start();
                     }
                     var proxy = new Proxy(clients, workers);
                     proxy.Start();

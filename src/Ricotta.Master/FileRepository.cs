@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Serilog;
 
 namespace Ricotta.Master
@@ -22,12 +24,37 @@ namespace Ricotta.Master
         public FileInfo GetFileInfo(string fileUri)
         {
             var filePath = GetServerFilePath(fileUri);
-            if (File.Exists(filePath))
+            if (!File.Exists(filePath))
             {
-                var fileInfo = new FileInfo(filePath);
-                return fileInfo;
+                throw new FileNotFoundException(fileUri);
             }
-            return null;
+
+            var fileInfo = new FileInfo(filePath);
+            return fileInfo;
+        }
+
+        public string GetFileSha256(string fileUri)
+        {
+            var filePath = GetServerFilePath(fileUri);
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException(fileUri);
+            }
+
+            using (var fs = new FileStream(filePath, FileMode.Open))
+            {
+                using (var sha256 = SHA256.Create())
+                {
+                    sha256.ComputeHash(fs);
+                    byte[] hash = sha256.ComputeHash(fs);
+                    StringBuilder formatted = new StringBuilder(2 * hash.Length);
+                    foreach (byte b in hash)
+                    {
+                        formatted.AppendFormat("{0:x2}", b);
+                    }
+                    return formatted.ToString();
+                }
+            }
         }
 
         public byte[] GetFileChunk(string fileUri, int offset, int length)
