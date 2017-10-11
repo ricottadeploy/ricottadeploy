@@ -16,6 +16,14 @@ namespace Ricotta.Transport
         private NetMQSocket _socket;
         private Session _session;
 
+        public Session Session
+        {
+            get
+            {
+                return _session;
+            }
+        }
+
         public Client(string clientId,
                         ISerializer serializer,
                         Rsa rsa,

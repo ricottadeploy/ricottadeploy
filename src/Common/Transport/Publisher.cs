@@ -68,11 +68,5 @@ namespace Ricotta.Transport
             return aes.Encrypt(data);
         }
 
-        private byte[] DecryptAes(byte[] data, byte[] key, byte[] iv)
-        {
-            var aes = Aes.Create(key, iv);
-            return aes.Decrypt(data);
-        }
-
     }
 }
