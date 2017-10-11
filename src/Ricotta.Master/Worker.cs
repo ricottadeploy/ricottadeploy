@@ -64,16 +64,22 @@ namespace Ricotta.Master
                     response = HandleAgentModuleInfo(applicationMessage);
                     break;
                 case ApplicationMessageType.AgentLog:
+                    // TODO
                     break;
                 case ApplicationMessageType.AgentJobStatus:
+                    // TODO
                     break;
                 case ApplicationMessageType.CommandAgentList:
+                    response = HandleCommandAgentList(applicationMessage);
                     break;
                 case ApplicationMessageType.CommandAgentAccept:
+                    response = HandleCommandAgentAccept(applicationMessage);
                     break;
                 case ApplicationMessageType.CommandAgentDeny:
+                    response = HandleCommandAgentDeny(applicationMessage);
                     break;
                 case ApplicationMessageType.CommandRunDeployment:
+                    response = HandleCommandRunDeployment(applicationMessage);
                     break;
             }
             return _serializer.Serialize<ApplicationMessage>(response);
@@ -126,8 +132,31 @@ namespace Ricotta.Master
             return response;
         }
 
+        private ApplicationMessage HandleCommandAgentList(ApplicationMessage message)
+        {
+            var commandAgentDeny = _serializer.Deserialize<CommandAgentList>(message.Data);
+            return null;
+        }
+
+        private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage message)
+        {
+            var commandAgentDeny = _serializer.Deserialize<CommandAgentAccept>(message.Data);
+            _clientStatusCache.Accept("fingerprint here");
+            return null;
+        }
+
         private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage message)
         {
+            var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
+            _clientStatusCache.Deny("fingerprint here");
+            _publishAes.RegenerateKey();
+            _sessionCache.Clear();
+            return null;
+        }
+
+        private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage message)
+        {
+            var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
             _clientStatusCache.Deny("fingerprint here");
             _publishAes.RegenerateKey();
             _sessionCache.Clear();
