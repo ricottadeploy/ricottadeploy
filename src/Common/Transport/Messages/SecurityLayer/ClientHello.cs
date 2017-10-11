@@ -10,5 +10,7 @@ namespace Ricotta.Transport.Messages.SecurityLayer
         public byte[] Random;
         [Key(1)]
         public string RSAPublicPem;
+        [Key(2)]
+        public string ClientId;
     }
 }

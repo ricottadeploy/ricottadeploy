@@ -49,6 +49,7 @@ namespace Ricotta.Transport
 
             var responseBytes = Receive();
             var message = _serializer.Deserialize<SecurityLayerMessage>(responseBytes);
+            // TODO: Check if ServerHello or AuthenticationStatus
             var serverHello = _serializer.Deserialize<ServerHello>(message.Data);
             _session.Id = serverHello.SessionId;
             _session.ServerRandom = serverHello.Random;

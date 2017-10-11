@@ -44,7 +44,7 @@ namespace Ricotta.Master
                 var agentId = Path.GetFileNameWithoutExtension(agentPublicKeyFile);
                 var agentPublicPem = File.ReadAllText(agentPublicKeyFile);
                 var agentRsa = Rsa.CreateFromPublicPEM(agentPublicPem);
-                _clientAuthInfoCache.Accept(agentRsa.Fingerprint);
+                _clientAuthInfoCache.Add(agentRsa.Fingerprint, agentId, ClientStatus.Accepted);
                 Log.Information($"Trusted agent {agentId} with RSA fingerprint {agentRsa.Fingerprint}");
             }
         }

@@ -17,16 +17,19 @@ namespace Ricotta.Transport
         private Rsa _rsa;
         private NetMQSocket _socket;
         private readonly SessionCache _sessionCache;
+        private readonly ClientAuthInfoCache _clientAuthInfoCache;
 
         public Server(ISerializer serializer,
                         Rsa rsa,
                         SessionCache sessionCache,
+                        ClientAuthInfoCache clientAuthInfoCache,
                         string serverUri)
         {
             _onApplicationDataReceivedCallback = new OnApplicationDataReceivedCallback(DefaultOnApplicationDataReceivedCallback);
             _serializer = serializer;
             _rsa = rsa;
             _sessionCache = sessionCache;
+            _clientAuthInfoCache = clientAuthInfoCache;
             _socket = new ResponseSocket();
             _socket.Connect(serverUri);
         }
@@ -65,24 +68,37 @@ namespace Ricotta.Transport
         private void HandleClientHello(byte[] message)
         {
             var clientHello = _serializer.Deserialize<ClientHello>(message);
-            var session = _sessionCache.NewSession();
-            var random = TLS12.GetRandom();
-            session.ServerRandom = random;
-            session.ClientRandom = clientHello.Random;
-            session.RSAPublicPem = clientHello.RSAPublicPem;
-            var serverHello = new ServerHello
+            var clientRsa = Rsa.CreateFromPublicPEM(clientHello.RSAPublicPem);
+            var clientAuthInfo = _clientAuthInfoCache.Get(clientRsa.Fingerprint);
+            if (clientAuthInfo == null)
             {
-                SessionId = session.Id,
-                Random = random,
-                RSAPublicPem = _rsa.PublicPem
-            };
-            var response = new SecurityLayerMessage
+                clientAuthInfo = _clientAuthInfoCache.Add(clientRsa.Fingerprint, clientHello.ClientId, ClientStatus.Pending);
+            }
+            if (clientAuthInfo.AuthenticationStatus == ClientStatus.Accepted)
             {
-                Type = SecurityMessageType.ServerHello,
-                Data = _serializer.Serialize<ServerHello>(serverHello)
-            };
-            var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
-            Send(responseBytes);
+                var session = _sessionCache.NewSession();
+                var random = TLS12.GetRandom();
+                session.ServerRandom = random;
+                session.ClientRandom = clientHello.Random;
+                session.RSAPublicPem = clientHello.RSAPublicPem;
+                var serverHello = new ServerHello
+                {
+                    SessionId = session.Id,
+                    Random = random,
+                    RSAPublicPem = _rsa.PublicPem
+                };
+                var response = new SecurityLayerMessage
+                {
+                    Type = SecurityMessageType.ServerHello,
+                    Data = _serializer.Serialize<ServerHello>(serverHello)
+                };
+                var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
+                Send(responseBytes);
+            }
+            else
+            {
+                // TODO: Send Authentication Status
+            }
         }
 
         private void HandleClientKeyExchange(byte[] message)

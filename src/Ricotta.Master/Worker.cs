@@ -42,7 +42,7 @@ namespace Ricotta.Master
         private void Run()
         {
             Log.Debug($"Started Worker {_workerId}");
-            var server = new Server(_serializer, _rsa, _sessionCache, _workersUrl);
+            var server = new Server(_serializer, _rsa, _sessionCache, _clientAuthInfoCache, _workersUrl);
             server.OnApplicationDataReceived(ProcessApplicationMessages);
             server.Listen();
         }
