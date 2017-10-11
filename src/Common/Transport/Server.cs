@@ -5,24 +5,34 @@ using Ricotta.Serialization;
 using Ricotta.Transport.Messages.SecurityLayer;
 using Ricotta.Transport;
 using NetMQ.Sockets;
+using Serilog;
 
 namespace Ricotta.Transport
 {
     public class Server
     {
-        private NetMQSocket _socket;
+        public delegate byte[] OnApplicationDataReceivedCallback(byte[] data);
+        private OnApplicationDataReceivedCallback _onApplicationDataReceivedCallback;
         private ISerializer _serializer;
-        private SessionCache _sessionCache;
         private Rsa _rsa;
+        private NetMQSocket _socket;
+        private readonly SessionCache _sessionCache;
 
-        public Server(ISerializer serializer, string serverUri)
+        public Server(ISerializer serializer,
+                        Rsa rsa,
+                        SessionCache sessionCache,
+                        string serverUri)
         {
+            _onApplicationDataReceivedCallback = new OnApplicationDataReceivedCallback(DefaultOnApplicationDataReceivedCallback);
             _serializer = serializer;
-            _rsa = Rsa.Create();
-            _sessionCache = new SessionCache();
+            _rsa = rsa;
+            _sessionCache = sessionCache;
             _socket = new ResponseSocket();
-            _socket.Bind(serverUri);
+            _socket.Connect(serverUri);
+        }
 
+        public void Listen()
+        {
             while (true)
             {
                 var messageBytes = _socket.ReceiveFrameBytes();
@@ -118,7 +128,7 @@ namespace Ricotta.Transport
             else
             {
                 var data = DecryptAes(applicationData.Data, session.ClientWriteKey, applicationData.AesIv);
-                var responseData = ProcessApplicationData(data);
+                var responseData = _onApplicationDataReceivedCallback(data);
                 var aesIv = TLS12.GetIV();
                 var applicationDataResponse = new ApplicationData
                 {
@@ -143,13 +153,14 @@ namespace Ricotta.Transport
             return aes.Decrypt(data);
         }
 
-        public byte[] ProcessApplicationData(byte[] message)
+        public byte[] DefaultOnApplicationDataReceivedCallback(byte[] message)
         {
-            foreach (var b in message)
-            {
-                Console.WriteLine(b);
-            }
-            return new byte[] { 1, 3, 5 };
+            return new byte[] { };
+        }
+
+        public void OnApplicationDataReceived(Func<byte[], byte[]> onApplicationDataReceivedCallback)
+        {
+            _onApplicationDataReceivedCallback = new OnApplicationDataReceivedCallback(onApplicationDataReceivedCallback);
         }
     }
 }

@@ -14,10 +14,11 @@ namespace Ricotta.Transport
         private NetMQSocket _socket;
         private Session _session;
 
-        public Client(ISerializer serializer)
+        public Client(ISerializer serializer,
+                        Rsa rsa)
         {
             _serializer = serializer;
-            _rsa = Rsa.Create();
+            _rsa = rsa;
             _socket = new RequestSocket();
             _session = new Session() { IsAuthenticated = false };
         }
@@ -143,5 +144,6 @@ namespace Ricotta.Transport
             var aes = Aes.Create(key, iv);
             return aes.Decrypt(data);
         }
+
     }
 }
