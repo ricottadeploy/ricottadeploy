@@ -84,7 +84,9 @@ namespace Ricotta.Master
             var agentFileInfo = _serializer.Deserialize<AgentFileInfo>(message.Data);
             var masterFileInfo = new MasterFileInfo
             {
-                FileUri = null
+                Size = -1,
+                IsDirectory = false,
+                Sha256 = null
             };
             var response = new ApplicationMessage
             {
@@ -99,7 +101,7 @@ namespace Ricotta.Master
             var agentFileChunk = _serializer.Deserialize<AgentFileChunk>(message.Data);
             var masterFileChunk = new MasterFileChunk
             {
-                FileUri = null
+                Data = null
             };
             var response = new ApplicationMessage
             {

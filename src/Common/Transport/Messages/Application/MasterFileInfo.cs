@@ -7,6 +7,10 @@ namespace Ricotta.Transport.Messages.Application
     public class MasterFileInfo
     {
         [Key(0)]
-        public string FileUri;
+        public long Size;
+        [Key(1)]
+        public bool IsDirectory;
+        [Key(2)]
+        public string Sha256;
     }
 }

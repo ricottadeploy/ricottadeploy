@@ -8,5 +8,9 @@ namespace Ricotta.Transport.Messages.Application
     {
         [Key(0)]
         public string FileUri;
+        [Key(1]
+        public int Offset;
+        [Key(0)]
+        public int Size;
     }
 }

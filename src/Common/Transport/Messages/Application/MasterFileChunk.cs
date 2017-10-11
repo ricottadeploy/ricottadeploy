@@ -7,6 +7,6 @@ namespace Ricotta.Transport.Messages.Application
     public class MasterFileChunk
     {
         [Key(0)]
-        public string FileUri;
+        public byte[] Data;
     }
 }

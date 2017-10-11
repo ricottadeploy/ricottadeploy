@@ -7,6 +7,6 @@ namespace Ricotta.Transport.Messages.Application
     public class AgentModuleInfo
     {
         [Key(0)]
-        public string FileUri;
+        public string ModuleName;
     }
 }
