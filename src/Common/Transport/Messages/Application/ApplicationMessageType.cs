@@ -6,7 +6,7 @@ namespace Ricotta.Transport.Messages.Application
     {
         // Agent to master req server
         AgentFileInfo = 0, MasterFileInfo,
-        AgentFileChunk, MasterFileChunkResponse,
+        AgentFileChunk, MasterFileChunk,
         AgentModuleInfo, MasterModuleInfo,
         AgentLog, MasterLog,
         AgentJobStatus, MasterJobStatus,

@@ -6,6 +6,7 @@ using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
 using Ricotta.Transport.Messages;
+using Ricotta.Transport.Messages.Application;
 using Serilog;
 
 namespace Ricotta.Master
@@ -42,15 +43,85 @@ namespace Ricotta.Master
         {
             Log.Debug($"Started Worker {_workerId}");
             var server = new Server(_serializer, _rsa, _sessionCache, _workersUrl);
-            server.OnApplicationDataReceived(data =>
-            {
-                foreach (var b in data)
-                {
-                    Log.Debug($"{b}");
-                }
-                return new byte[] { 5, 4, 3 };
-            });
+            server.OnApplicationDataReceived(ProcessApplicationMessages);
             server.Listen();
+        }
+
+        private byte[] ProcessApplicationMessages(byte[] message)
+        {
+            var applicationMessage = _serializer.Deserialize<ApplicationMessage>(message);
+            Log.Debug($"Recevied application message of type {applicationMessage.Type}");
+            ApplicationMessage response = null;
+            switch (applicationMessage.Type)
+            {
+                case ApplicationMessageType.AgentFileInfo:
+                    response = HandleAgentFileInfo(applicationMessage);
+                    break;
+                case ApplicationMessageType.AgentFileChunk:
+                    response = HandleAgentFileChunk(applicationMessage);
+                    break;
+                case ApplicationMessageType.AgentModuleInfo:
+                    response = HandleAgentModuleInfo(applicationMessage);
+                    break;
+                case ApplicationMessageType.AgentLog:
+                    break;
+                case ApplicationMessageType.AgentJobStatus:
+                    break;
+                case ApplicationMessageType.CommandAgentList:
+                    break;
+                case ApplicationMessageType.CommandAgentAccept:
+                    break;
+                case ApplicationMessageType.CommandAgentDeny:
+                    break;
+                case ApplicationMessageType.CommandRunDeployment:
+                    break;
+            }
+            return _serializer.Serialize<ApplicationMessage>(response);
+        }
+
+        private ApplicationMessage HandleAgentFileInfo(ApplicationMessage message)
+        {
+            var agentFileInfo = _serializer.Deserialize<AgentFileInfo>(message.Data);
+            var masterFileInfo = new MasterFileInfo
+            {
+                FileUri = null
+            };
+            var response = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterFileInfo,
+                Data = _serializer.Serialize<MasterFileInfo>(masterFileInfo)
+            };
+            return response;
+        }
+
+        private ApplicationMessage HandleAgentFileChunk(ApplicationMessage message)
+        {
+            var agentFileChunk = _serializer.Deserialize<AgentFileChunk>(message.Data);
+            var masterFileChunk = new MasterFileChunk
+            {
+                FileUri = null
+            };
+            var response = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterFileChunk,
+                Data = _serializer.Serialize<MasterFileChunk>(masterFileChunk)
+            };
+            return response;
+        }
+
+        private ApplicationMessage HandleAgentModuleInfo(ApplicationMessage message)
+        {
+            var agentModuleInfo = _serializer.Deserialize<AgentModuleInfo>(message.Data);
+            var masterModuleInfo = new MasterModuleInfo
+            {
+                FileUri = null
+            };
+            var response = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterModuleInfo,
+                Data = _serializer.Serialize<MasterModuleInfo>(masterModuleInfo)
+            };
+            return response;
         }
     }
 }
