@@ -41,7 +41,7 @@ namespace Ricotta.Transport
                 var decryptedMessageData = DecryptAes(message.Data, _aesKey, message.AesIv);
                 if (message.Type == PublishMessageType.ExecuteModuleMethod)
                 {
-                    var executeModuleMethod = _serializer.Deserialize<ExecuteModuleMethod>(message.Data);
+                    var executeModuleMethod = _serializer.Deserialize<ExecuteModuleMethod>(decryptedMessageData);
                     _executeModuleMethodHandler(executeModuleMethod);
                 }
             }

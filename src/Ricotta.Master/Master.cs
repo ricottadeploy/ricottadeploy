@@ -80,6 +80,7 @@ namespace Ricotta.Master
                                                 _clientAuthInfoCache,
                                                 _fileRepository)).Start();
                     }
+                    new Thread(() => new TestThread(_publisher)).Start();
                     var proxy = new Proxy(clients, workers);
                     proxy.Start();
                 }
