@@ -123,5 +123,13 @@ namespace Ricotta.Master
             };
             return response;
         }
+
+        private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage message)
+        {
+            _clientStatusCache.Deny("fingerprint here");
+            _publishAes.RegenerateKey();
+            _sessionCache.Clear();
+            return null;
+        }
     }
 }

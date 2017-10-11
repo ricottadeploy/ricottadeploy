@@ -36,5 +36,10 @@ namespace Ricotta.Transport
             Session removedSession;
             return _sessions.TryRemove(sessionId, out removedSession);
         }
+
+        public void Clear()
+        {
+            _sessions = new ConcurrentDictionary<string, Session>();
+        }
     }
 }

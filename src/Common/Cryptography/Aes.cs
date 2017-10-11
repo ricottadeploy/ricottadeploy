@@ -45,6 +45,13 @@ namespace Ricotta.Cryptography
             return new Aes(key, iv);
         }
 
+        public void RegenerateKey()
+        {
+            var aes = sc.Aes.Create();
+            _key = aes.Key;
+            _iv = aes.IV;
+        }
+
         public byte[] Encrypt(byte[] data)
         {
             using (var aes = sc.Aes.Create())
