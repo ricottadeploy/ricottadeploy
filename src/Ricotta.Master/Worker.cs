@@ -17,7 +17,7 @@ namespace Ricotta.Master
         private readonly string _workersUrl;
         private readonly ISerializer _serializer;
         private readonly Rsa _rsa;
-        private Aes _publishAes;
+        private Publisher _publisher;
         private readonly SessionCache _sessionCache;
         private readonly ClientAuthInfoCache _clientAuthInfoCache;
         private readonly FileRepository _fileRepository;
@@ -26,7 +26,7 @@ namespace Ricotta.Master
                         string workersUrl,
                         ISerializer serializer,
                         Rsa rsa,
-                        Aes publishAes,
+                        Publisher publisher,
                         SessionCache sessionCache,
                         ClientAuthInfoCache clientAuthInfoCache,
                         FileRepository fileRepository)
@@ -35,7 +35,7 @@ namespace Ricotta.Master
             _workersUrl = workersUrl;
             _serializer = serializer;
             _rsa = rsa;
-            _publishAes = publishAes;
+            _publisher = publisher;
             _sessionCache = sessionCache;
             _clientAuthInfoCache = clientAuthInfoCache;
             _fileRepository = fileRepository;
@@ -45,7 +45,7 @@ namespace Ricotta.Master
         private void Run()
         {
             Log.Debug($"Started Worker {_workerId}");
-            var server = new Server(_serializer, _rsa, _sessionCache, _clientAuthInfoCache, _workersUrl);
+            var server = new Server(_serializer, _rsa, _publisher, _sessionCache, _clientAuthInfoCache, _workersUrl);
             server.OnApplicationDataReceived(ProcessApplicationMessages);
             server.Listen();
         }
@@ -174,7 +174,7 @@ namespace Ricotta.Master
         {
             var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
             _clientAuthInfoCache.Deny("fingerprint here");
-            _publishAes.RegenerateKey();
+            _publisher.Aes.RegenerateKey();
             _sessionCache.Clear();
             return null;
         }
@@ -183,7 +183,7 @@ namespace Ricotta.Master
         {
             var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
             _clientAuthInfoCache.Deny("fingerprint here");
-            _publishAes.RegenerateKey();
+            _publisher.Aes.RegenerateKey();
             _sessionCache.Clear();
             return null;
         }

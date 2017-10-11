@@ -8,5 +8,7 @@ namespace Ricotta.Transport.Messages.SecurityLayer
     {
         [Key(0)]
         public string SessionId;
+        [Key(1)]
+        public byte[] PublishAesKey;
     }
 }

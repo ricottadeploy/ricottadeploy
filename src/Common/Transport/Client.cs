@@ -129,6 +129,7 @@ namespace Ricotta.Transport
             _session.ServerWriteMACKey = TLS12.GetServerWriteMACKey(keys);
             _session.ClientWriteKey = TLS12.GetClientWriteKey(keys);
             _session.ServerWriteKey = TLS12.GetServerWriteKey(keys);
+            _session.PublishKey = serverFinished.PublishAesKey;
             _session.IsAuthenticated = true;
 
             return true;

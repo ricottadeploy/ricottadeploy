@@ -15,12 +15,14 @@ namespace Ricotta.Transport
         private OnApplicationDataReceivedCallback _onApplicationDataReceivedCallback;
         private ISerializer _serializer;
         private Rsa _rsa;
+        private Publisher _publisher;
         private NetMQSocket _socket;
         private readonly SessionCache _sessionCache;
         private readonly ClientAuthInfoCache _clientAuthInfoCache;
 
         public Server(ISerializer serializer,
                         Rsa rsa,
+                        Publisher publisher,
                         SessionCache sessionCache,
                         ClientAuthInfoCache clientAuthInfoCache,
                         string serverUri)
@@ -28,6 +30,7 @@ namespace Ricotta.Transport
             _onApplicationDataReceivedCallback = new OnApplicationDataReceivedCallback(DefaultOnApplicationDataReceivedCallback);
             _serializer = serializer;
             _rsa = rsa;
+            _publisher = publisher;
             _sessionCache = sessionCache;
             _clientAuthInfoCache = clientAuthInfoCache;
             _socket = new ResponseSocket();
@@ -134,7 +137,8 @@ namespace Ricotta.Transport
             }
             var serverFinished = new ServerFinished
             {
-                SessionId = session.Id
+                SessionId = session.Id,
+                PublishAesKey = _publisher.Aes.Key
             };
             var response = new SecurityLayerMessage
             {

@@ -10,8 +10,9 @@ namespace Ricotta.Transport
         public byte[] MasterSecret { get; set; }
         public byte[] ClientWriteMACKey { get; set; }
         public byte[] ServerWriteMACKey { get; set; }
-        public byte[] ClientWriteKey {get;set;}
-        public byte[] ServerWriteKey {get;set;}
+        public byte[] ClientWriteKey { get; set; }
+        public byte[] ServerWriteKey { get; set; }
+        public byte[] PublishKey { get; set; }
         public string RSAPublicPem { get; set; } // Other side
         public bool IsAuthenticated { get; set; }
     }

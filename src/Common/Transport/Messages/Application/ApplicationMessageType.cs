@@ -10,8 +10,6 @@ namespace Ricotta.Transport.Messages.Application
         AgentModuleInfo, MasterModuleInfo,
         AgentLog, MasterLog,
         AgentJobStatus, MasterJobStatus,
-        // Master to agents
-        MasterJob,
         // CLI to master req server
         CommandAgentList, MasterAgentList,
         CommandAgentAccept, MasterAgentAccept,

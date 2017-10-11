@@ -18,6 +18,7 @@ namespace Ricotta.Master
         private readonly ISerializer _serializer;
         private readonly Rsa _rsa;
         private Aes _publishAes;
+        private Publisher _publisher;
         private SessionCache _sessionCache;
         private ClientAuthInfoCache _clientAuthInfoCache;
         private FileRepository _fileRepository;
@@ -58,7 +59,7 @@ namespace Ricotta.Master
             var request_url = _config["bind:request_url"];
             var publish_url = _config["bind:publish_url"];
             Log.Information($"Starting publish server at {publish_url}");
-            //_publishingSocket = new PublishingSocket(_masterId, _serializer, _publishAes, publish_url);
+            _publisher = new Publisher(_serializer, _publishAes, _config["bind:publish_url"]);
 
             using (var clients = new RouterSocket())
             {
@@ -74,7 +75,7 @@ namespace Ricotta.Master
                                                 WORKERS_URL,
                                                 _serializer,
                                                 _rsa,
-                                                _publishAes,
+                                                _publisher,
                                                 _sessionCache,
                                                 _clientAuthInfoCache,
                                                 _fileRepository)).Start();
