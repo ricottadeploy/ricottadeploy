@@ -69,11 +69,13 @@ namespace Ricotta.Transport
         {
             var clientHello = _serializer.Deserialize<ClientHello>(message);
             var clientRsa = Rsa.CreateFromPublicPEM(clientHello.RSAPublicPem);
+            Log.Debug($"Received ClientHello from {clientHello.ClientId} with RSA fingerprint {clientRsa.Fingerprint}");
             var clientAuthInfo = _clientAuthInfoCache.Get(clientRsa.Fingerprint);
             if (clientAuthInfo == null)
             {
                 clientAuthInfo = _clientAuthInfoCache.Add(clientRsa.Fingerprint, clientHello.ClientId, ClientStatus.Pending);
             }
+            Log.Debug($"{clientHello.ClientId} authentication status: {clientAuthInfo.AuthenticationStatus}");
             if (clientAuthInfo.AuthenticationStatus == ClientStatus.Accepted)
             {
                 var session = _sessionCache.NewSession();
@@ -97,7 +99,17 @@ namespace Ricotta.Transport
             }
             else
             {
-                // TODO: Send Authentication Status
+                var serverAuthenticationStatus = new ServerAuthenticationStatus
+                {
+                    Status = clientAuthInfo.AuthenticationStatus
+                };
+                var response = new SecurityLayerMessage
+                {
+                    Type = SecurityMessageType.ServerAuthenticationStatus,
+                    Data = _serializer.Serialize<ServerAuthenticationStatus>(serverAuthenticationStatus)
+                };
+                var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
+                Send(responseBytes);
             }
         }
 

@@ -9,33 +9,63 @@ namespace Ricotta.Transport
 {
     public class Client
     {
+        private string _clientId;
         private ISerializer _serializer;
         private Rsa _rsa;
+        private string _serverUri;
         private NetMQSocket _socket;
         private Session _session;
 
-        public Client(ISerializer serializer,
-                        Rsa rsa)
+        public Client(string clientId,
+                        ISerializer serializer,
+                        Rsa rsa,
+                        string serverUri)
         {
+            _clientId = clientId;
             _serializer = serializer;
             _rsa = rsa;
-            _socket = new RequestSocket();
+            _serverUri = serverUri;
             _session = new Session() { IsAuthenticated = false };
         }
 
-        public void Connect(string serverUri)
+        public bool Authenticated
         {
-            _socket.Connect(serverUri);
-            SendClientHello();
-            SendClientKeyExchange();
+            get
+            {
+                return _session.IsAuthenticated;
+            }
         }
 
-        private void SendClientHello()
+        public ClientStatus TryAuthenticating(int milliseconds = 0)
+        {
+            _socket = new RequestSocket();
+            _socket.Connect(_serverUri);
+            var status = SendClientHello(milliseconds);
+            if (status.HasValue)
+            {
+                if (status.Value == ClientStatus.Accepted)
+                {
+                    var result = SendClientKeyExchange(milliseconds);
+                    return ClientStatus.Accepted;
+                }
+                else
+                {
+                    return status.Value;
+                }
+            }
+            else
+            {
+                return ClientStatus.Pending;
+            }
+        }
+
+        private ClientStatus? SendClientHello(int milliseconds = 0)
         {
             var random = TLS12.GetRandom();
             _session.ClientRandom = random;
             var clientHello = new ClientHello
             {
+                ClientId = _clientId,
                 Random = random,
                 RSAPublicPem = _rsa.PublicPem
             };
@@ -47,16 +77,29 @@ namespace Ricotta.Transport
             var requestBytes = _serializer.Serialize<SecurityLayerMessage>(request);
             Send(requestBytes);
 
-            var responseBytes = Receive();
+            var responseBytes = Receive(milliseconds);
+            if (responseBytes == null)
+            {
+                return null;
+            }
             var message = _serializer.Deserialize<SecurityLayerMessage>(responseBytes);
-            // TODO: Check if ServerHello or AuthenticationStatus
-            var serverHello = _serializer.Deserialize<ServerHello>(message.Data);
-            _session.Id = serverHello.SessionId;
-            _session.ServerRandom = serverHello.Random;
-            _session.RSAPublicPem = serverHello.RSAPublicPem;
+            switch (message.Type)
+            {
+                case SecurityMessageType.ServerAuthenticationStatus:
+                    var serverAuthenticationStatus = _serializer.Deserialize<ServerAuthenticationStatus>(message.Data);
+                    return serverAuthenticationStatus.Status;
+                case SecurityMessageType.ServerHello:
+                    var serverHello = _serializer.Deserialize<ServerHello>(message.Data);
+                    _session.Id = serverHello.SessionId;
+                    _session.ServerRandom = serverHello.Random;
+                    _session.RSAPublicPem = serverHello.RSAPublicPem;
+                    return ClientStatus.Accepted;
+                default:
+                    throw new Exception($"Unexpected message recieved of type {message.Type}");
+            }
         }
 
-        private void SendClientKeyExchange()
+        private bool SendClientKeyExchange(int milliseconds)
         {
             var preMasterSecret = TLS12.GetPreMasterSecret();
             _session.MasterSecret = TLS12.GetMasterSecret(preMasterSecret, _session.ClientRandom, _session.ServerRandom);
@@ -74,7 +117,9 @@ namespace Ricotta.Transport
             var requestBytes = _serializer.Serialize<SecurityLayerMessage>(request);
             Send(requestBytes);
 
-            var responseBytes = Receive();
+            var responseBytes = Receive(milliseconds);
+            if (responseBytes == null) return false;
+
             var message = _serializer.Deserialize<SecurityLayerMessage>(responseBytes);
             var serverFinished = _serializer.Deserialize<ServerFinished>(message.Data);
 
@@ -85,6 +130,8 @@ namespace Ricotta.Transport
             _session.ClientWriteKey = TLS12.GetClientWriteKey(keys);
             _session.ServerWriteKey = TLS12.GetServerWriteKey(keys);
             _session.IsAuthenticated = true;
+
+            return true;
         }
 
         private void Send(byte[] data)
@@ -92,9 +139,19 @@ namespace Ricotta.Transport
             _socket.SendFrame(data);
         }
 
-        private byte[] Receive()
+        private byte[] Receive(int milliseconds = 0)
         {
-            return _socket.ReceiveFrameBytes();
+            byte[] bytes;
+            if (milliseconds == 0)
+            {
+                bytes = _socket.ReceiveFrameBytes();
+            }
+            else
+            {
+                var recieved = _socket.TryReceiveFrameBytes(new TimeSpan(0, 0, 0, 0, milliseconds), out bytes);
+                if (!recieved) return null;
+            }
+            return bytes;
         }
 
         public void SendApplicationData(byte[] data)
