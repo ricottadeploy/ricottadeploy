@@ -1,0 +1,1 @@
+dotnet run C:\ricottadev\agent\config.yml
