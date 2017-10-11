@@ -19,7 +19,7 @@ namespace Ricotta.Master
         private readonly Rsa _rsa;
         private Aes _publishAes;
         private readonly SessionCache _sessionCache;
-        private readonly ClientStatusCache _clientStatusCache;
+        private readonly ClientAuthInfoCache _clientAuthInfoCache;
 
         public Worker(int workerId,
                         string workersUrl,
@@ -27,7 +27,7 @@ namespace Ricotta.Master
                         Rsa rsa,
                         Aes publishAes,
                         SessionCache sessionCache,
-                        ClientStatusCache clientStatusCache)
+                        ClientAuthInfoCache clientAuthInfoCache)
         {
             _workerId = workerId;
             _workersUrl = workersUrl;
@@ -35,7 +35,7 @@ namespace Ricotta.Master
             _rsa = rsa;
             _publishAes = publishAes;
             _sessionCache = sessionCache;
-            _clientStatusCache = clientStatusCache;
+            _clientAuthInfoCache = clientAuthInfoCache;
             Run();
         }
 
@@ -141,14 +141,14 @@ namespace Ricotta.Master
         private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage message)
         {
             var commandAgentDeny = _serializer.Deserialize<CommandAgentAccept>(message.Data);
-            _clientStatusCache.Accept("fingerprint here");
+            _clientAuthInfoCache.Accept("fingerprint here");
             return null;
         }
 
         private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage message)
         {
             var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
-            _clientStatusCache.Deny("fingerprint here");
+            _clientAuthInfoCache.Deny("fingerprint here");
             _publishAes.RegenerateKey();
             _sessionCache.Clear();
             return null;
@@ -157,7 +157,7 @@ namespace Ricotta.Master
         private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage message)
         {
             var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
-            _clientStatusCache.Deny("fingerprint here");
+            _clientAuthInfoCache.Deny("fingerprint here");
             _publishAes.RegenerateKey();
             _sessionCache.Clear();
             return null;

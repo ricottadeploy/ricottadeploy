@@ -3,16 +3,16 @@ using System.Collections.Concurrent;
 
 namespace Ricotta.Transport
 {
-    public class ClientStatusCache
+    public class ClientAuthInfoCache
     {
-        private ConcurrentDictionary<string, ClientStatus> _clients;    // <RSAFingerprint, ClientStatus>
+        private ConcurrentDictionary<string, ClientAuthInfo> _clients;    // <RSAFingerprint, ClientAuthInfo>
 
-        public ClientStatusCache()
+        public ClientAuthInfoCache()
         {
-            _clients = new ConcurrentDictionary<string, ClientStatus>();
+            _clients = new ConcurrentDictionary<string, ClientAuthInfo>();
         }
 
-        public ClientStatus? Get(string rsaFingerprint)
+        public ClientAuthInfo Get(string rsaFingerprint)
         {
             if (_clients.ContainsKey(rsaFingerprint))
             {
@@ -25,11 +25,7 @@ namespace Ricotta.Transport
         {
             if (_clients.ContainsKey(rsaFingerprint))
             {
-                _clients[rsaFingerprint] = clientStatus;
-            }
-            else
-            {
-                _clients.TryAdd(rsaFingerprint, clientStatus);
+                _clients[rsaFingerprint].AuthenticationStatus = clientStatus;
             }
         }
 

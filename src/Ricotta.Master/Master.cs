@@ -19,7 +19,7 @@ namespace Ricotta.Master
         private readonly Rsa _rsa;
         private Aes _publishAes;
         private SessionCache _sessionCache;
-        private ClientStatusCache _clientStatusCache;
+        private ClientAuthInfoCache _clientAuthInfoCache;
 
         public Master(IConfigurationRoot config,
                         ISerializer serializer)
@@ -30,7 +30,7 @@ namespace Ricotta.Master
             _rsa = GetRsaKeys();
             _publishAes = Aes.Create();
             _sessionCache = new SessionCache();
-            _clientStatusCache = new ClientStatusCache();
+            _clientAuthInfoCache = new ClientAuthInfoCache();
             LoadPreAcceptedAgents();
         }
 
@@ -44,7 +44,7 @@ namespace Ricotta.Master
                 var agentId = Path.GetFileNameWithoutExtension(agentPublicKeyFile);
                 var agentPublicPem = File.ReadAllText(agentPublicKeyFile);
                 var agentRsa = Rsa.CreateFromPublicPEM(agentPublicPem);
-                _clientStatusCache.Accept(agentRsa.Fingerprint);
+                _clientAuthInfoCache.Accept(agentRsa.Fingerprint);
                 Log.Information($"Trusted agent {agentId} with RSA fingerprint {agentRsa.Fingerprint}");
             }
         }
@@ -74,7 +74,7 @@ namespace Ricotta.Master
                                                 _rsa,
                                                 _publishAes,
                                                 _sessionCache,
-                                                _clientStatusCache)).Start();
+                                                _clientAuthInfoCache)).Start();
                     }
                     var proxy = new Proxy(clients, workers);
                     proxy.Start();
