@@ -6,7 +6,7 @@ namespace Ricotta.Cryptography
 {
     public class Tls12
     {
-        public static byte[] GetRandomBytes(int length)
+        public static byte[] GenerateRandomBytes(int length)
         {
             var rngCsp = RNGCryptoServiceProvider.Create();
             var random = new byte[length];
@@ -14,21 +14,20 @@ namespace Ricotta.Cryptography
             return random;
         }
 
-        public static byte[] GetRandom()
+        public static byte[] NewRandom()
         {
-            return GetRandomBytes(28);
+            return GenerateRandomBytes(28);
         }
 
-        public static byte[] GetPreMasterSecret()
+        public static byte[] NewPremasterSecret()
         {
-            return GetRandomBytes(46);
+            return GenerateRandomBytes(46);
         }
 
-        public static byte[] GetIV()
+        public static byte[] NewAesIv()
         {
-            return GetRandomBytes(16);
+            return GenerateRandomBytes(16);
         }
-
 
         public static byte[] GetMasterSecret(byte[] preMasterSecret, byte[] clientRandom, byte[] serverRandom)
         {

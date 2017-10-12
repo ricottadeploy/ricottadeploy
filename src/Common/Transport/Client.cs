@@ -44,16 +44,21 @@ namespace Ricotta.Transport
             }
         }
 
-        public ClientStatus TryAuthenticating(int milliseconds = 0)
+        /// <summary>
+        /// Attempts to authenticate with the server.
+        /// </summary>
+        /// <param name="timeout">Timeout in milliseconds</param>
+        /// <returns>Returns the authentication status.</returns>
+        public ClientStatus TryAuthenticating(int timeout = 0)
         {
             _socket = new RequestSocket();
             _socket.Connect(_serverUri);
-            var status = SendClientHello(milliseconds);
+            var status = SendClientHello(timeout);
             if (status.HasValue)
             {
                 if (status.Value == ClientStatus.Accepted)
                 {
-                    var result = SendClientKeyExchange(milliseconds);
+                    var result = SendClientKeyExchange(timeout);
                     return ClientStatus.Accepted;
                 }
                 else
@@ -67,9 +72,16 @@ namespace Ricotta.Transport
             }
         }
 
-        private ClientStatus? SendClientHello(int milliseconds = 0)
+        /// <summary>
+        /// Sends a ClientHello message to the server. 
+        /// If client public key has been accepted at the server, the server sends a ServerHello message.
+        /// if client public key has been denied or the status is pending at the server, the server sends ServerAuthenticationStatus.
+        /// </summary>
+        /// <param name="timeout">Timeout in milliseconds</param>
+        /// <returns>Returns authentication status. Returns null on timeout.</returns>
+        private ClientStatus? SendClientHello(int timeout = 0)
         {
-            var random = Tls12.GetRandom();
+            var random = Tls12.NewRandom();
             _session.ClientRandom = random;
             var clientHello = new ClientHello
             {
@@ -77,62 +89,70 @@ namespace Ricotta.Transport
                 Random = random,
                 RSAPublicPem = _rsa.PublicPem
             };
-            var data = _serializer.Serialize<ClientHello>(clientHello);
-            var request = new SecurityLayerMessage
+            var clientHelloBytes = _serializer.Serialize<ClientHello>(clientHello);
+            var securityLayerMessage = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ClientHello,
-                Data = data
+                Data = clientHelloBytes
             };
-            var requestBytes = _serializer.Serialize<SecurityLayerMessage>(request);
-            Send(requestBytes);
+            var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(securityLayerMessage);
+            Send(securityLayerMessageBytes);
 
-            var responseBytes = Receive(milliseconds);
-            if (responseBytes == null)
+            var receivedSecurityLayerMessageBytes = Receive(timeout);
+            if (receivedSecurityLayerMessageBytes == null)
             {
                 return null;
             }
-            var message = _serializer.Deserialize<SecurityLayerMessage>(responseBytes);
-            switch (message.Type)
+            var receivedSecurityLayerMessage = _serializer.Deserialize<SecurityLayerMessage>(receivedSecurityLayerMessageBytes);
+            switch (receivedSecurityLayerMessage.Type)
             {
                 case SecurityMessageType.ServerAuthenticationStatus:
-                    var serverAuthenticationStatus = _serializer.Deserialize<ServerAuthenticationStatus>(message.Data);
+                    var serverAuthenticationStatus = _serializer.Deserialize<ServerAuthenticationStatus>(receivedSecurityLayerMessage.Data);
                     return serverAuthenticationStatus.Status;
                 case SecurityMessageType.ServerHello:
-                    var serverHello = _serializer.Deserialize<ServerHello>(message.Data);
+                    var serverHello = _serializer.Deserialize<ServerHello>(receivedSecurityLayerMessage.Data);
                     _session.Id = serverHello.SessionId;
                     _session.ServerRandom = serverHello.Random;
                     _session.RSAPublicPem = serverHello.RSAPublicPem;
                     return ClientStatus.Accepted;
                 default:
-                    throw new Exception($"Unexpected message recieved of type {message.Type}");
+                    throw new Exception($"Unexpected message recieved of type {receivedSecurityLayerMessage.Type}");
             }
         }
 
-        private bool SendClientKeyExchange(int milliseconds)
+        /// <summary>
+        /// Sends a ClientKeyExchange message to the server.
+        /// Server sends back a ServerFinished message.
+        /// Calculates keys and updates the session.
+        /// </summary>
+        /// <param name="timeout">Timeout in milliseconds</param>
+        /// <returns>Returns true if authentication is successful and false otherwise.</returns>
+        private bool SendClientKeyExchange(int timeout)
         {
-            var preMasterSecret = Tls12.GetPreMasterSecret();
-            _session.MasterSecret = Tls12.GetMasterSecret(preMasterSecret, _session.ClientRandom, _session.ServerRandom);
+            var premasterSecret = Tls12.NewPremasterSecret();
+            _session.MasterSecret = Tls12.GetMasterSecret(premasterSecret, _session.ClientRandom, _session.ServerRandom);
             var clientKeyExchange = new ClientKeyExchange
             {
                 SessionId = _session.Id,
-                PreMasterSecret = preMasterSecret
+                PreMasterSecret = premasterSecret
             };
             var serverRsa = Rsa.CreateFromPublicPEM(_session.RSAPublicPem);
-            var data = serverRsa.Encrypt(_serializer.Serialize<ClientKeyExchange>(clientKeyExchange));
-            var request = new SecurityLayerMessage
+            var clientKeyExchangeBytes = serverRsa.Encrypt(_serializer.Serialize<ClientKeyExchange>(clientKeyExchange));
+            var securityLayerMessage = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ClientKeyExchange,
-                Data = data
+                Data = clientKeyExchangeBytes
             };
-            var requestBytes = _serializer.Serialize<SecurityLayerMessage>(request);
-            Send(requestBytes);
+            var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(securityLayerMessage);
+            Send(securityLayerMessageBytes);
 
-            var responseBytes = Receive(milliseconds);
-            if (responseBytes == null) return false;
-
-            var message = _serializer.Deserialize<SecurityLayerMessage>(responseBytes);
-            var serverFinished = _serializer.Deserialize<ServerFinished>(message.Data);
-
+            var receivedSecurityLayerMessageBytes = Receive(timeout);
+            if (receivedSecurityLayerMessageBytes == null)
+            {
+                return false;
+            }
+            var receivedSecurityLayerMessage = _serializer.Deserialize<SecurityLayerMessage>(receivedSecurityLayerMessageBytes);
+            var serverFinished = _serializer.Deserialize<ServerFinished>(receivedSecurityLayerMessage.Data);
             _session.Id = serverFinished.SessionId;
             var keys = Tls12.GetKeys(_session.MasterSecret, _session.ClientRandom, _session.ServerRandom);
             _session.ClientWriteMACKey = Tls12.GetClientWriteMACKey(keys);
@@ -141,65 +161,86 @@ namespace Ricotta.Transport
             _session.ServerWriteKey = Tls12.GetServerWriteKey(keys);
             _session.PublishKey = serverFinished.PublishAesKey;
             _session.IsAuthenticated = true;
-
             return true;
         }
 
-        private void Send(byte[] data)
-        {
-            _socket.SendFrame(data);
-        }
-
-        private byte[] Receive(int milliseconds = 0)
-        {
-            byte[] bytes;
-            if (milliseconds == 0)
-            {
-                bytes = _socket.ReceiveFrameBytes();
-            }
-            else
-            {
-                var recieved = _socket.TryReceiveFrameBytes(new TimeSpan(0, 0, 0, 0, milliseconds), out bytes);
-                if (!recieved) return null;
-            }
-            return bytes;
-        }
-
+        /// <summary>
+        /// Encrypts the data with client AES key and sends it to the server. 
+        /// </summary>
+        /// <param name="data">Byte array to be sent to the server</param>
         public void SendApplicationData(byte[] data)
         {
             if (!_session.IsAuthenticated)
             {
                 throw new Exception("Not authenticated");
             }
-            var aesIv = Tls12.GetIV();
+            var aesIv = Tls12.NewAesIv();
             var applicationData = new ApplicationData
             {
                 SessionId = _session.Id,
                 AesIv = aesIv,
                 Data = Aes.Encrypt(data, _session.ClientWriteKey, aesIv)
             };
-            var bytes = _serializer.Serialize<ApplicationData>(applicationData);
+            var applicationDataBytes = _serializer.Serialize<ApplicationData>(applicationData);
             var message = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ApplicationData,
-                Data = bytes
+                Data = applicationDataBytes
             };
-            Send(_serializer.Serialize<SecurityLayerMessage>(message));
+            var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(message);
+            Send(securityLayerMessageBytes);
         }
 
+        /// <summary>
+        /// Receives data from the server and decrypts it with the server AES key before returning it.
+        /// </summary>
+        /// <returns>Returns application data sent by the server</returns>
         public byte[] ReceiveApplicationData()
         {
             if (!_session.IsAuthenticated)
             {
                 throw new Exception("Not authenticated");
             }
-            var message = Receive();
-            var applicationData = _serializer.Deserialize<ApplicationData>(message);
+            var applicationDataBytes = Receive();
+            var applicationData = _serializer.Deserialize<ApplicationData>(applicationDataBytes);
             if (_session.Id != applicationData.SessionId)
             {
-                // Something is wrong. Handle it!
+                throw new Exception("Unexpected Session ID");
             }
-            return Aes.Decrypt(applicationData.Data, _session.ServerWriteKey, applicationData.AesIv);
+            var data = Aes.Decrypt(applicationData.Data, _session.ServerWriteKey, applicationData.AesIv);
+            return data;
+        }
+
+        private void Send(byte[] data)
+        {
+            if (!_session.IsAuthenticated)
+            {
+                throw new Exception("Not authenticated");
+            }
+            _socket.SendFrame(data);
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="timeout">Timeout in milliseconds</param>
+        /// <returns>Returns byte array received from socket. Returns null on timeout.</returns>
+        private byte[] Receive(int timeout = 0)
+        {
+            byte[] bytes;
+            if (timeout == 0)
+            {
+                bytes = _socket.ReceiveFrameBytes();
+            }
+            else
+            {
+                var timeSpan = new TimeSpan(0, 0, 0, 0, timeout);
+                var recieved = _socket.TryReceiveFrameBytes(timeSpan, out bytes);
+                if (!recieved)
+                {
+                    return null;
+                }
+            }
+            return bytes;
         }
 
     }

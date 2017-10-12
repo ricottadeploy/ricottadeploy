@@ -92,7 +92,7 @@ namespace Ricotta.Transport
                 {
                     session = _sessionCache.NewSession();
                 }
-                var random = Tls12.GetRandom();
+                var random = Tls12.NewRandom();
                 session.ServerRandom = random;
                 session.ClientRandom = clientHello.Random;
                 session.RSAPublicPem = clientHello.RSAPublicPem;
@@ -174,7 +174,7 @@ namespace Ricotta.Transport
             {
                 var data = Aes.Decrypt(applicationData.Data, session.ClientWriteKey, applicationData.AesIv);
                 var responseData = _onApplicationDataReceivedCallback(data);
-                var aesIv = Tls12.GetIV();
+                var aesIv = Tls12.NewAesIv();
                 var applicationDataResponse = new ApplicationData
                 {
                     SessionId = session.Id,
