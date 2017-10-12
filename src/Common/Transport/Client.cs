@@ -77,10 +77,11 @@ namespace Ricotta.Transport
                 Random = random,
                 RSAPublicPem = _rsa.PublicPem
             };
+            var data = _serializer.Serialize<ClientHello>(clientHello);
             var request = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ClientHello,
-                Data = _serializer.Serialize<ClientHello>(clientHello)
+                Data = data
             };
             var requestBytes = _serializer.Serialize<SecurityLayerMessage>(request);
             Send(requestBytes);
@@ -117,10 +118,11 @@ namespace Ricotta.Transport
                 PreMasterSecret = preMasterSecret
             };
             var serverRsa = Rsa.CreateFromPublicPEM(_session.RSAPublicPem);
+            var data = serverRsa.Encrypt(_serializer.Serialize<ClientKeyExchange>(clientKeyExchange));
             var request = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ClientKeyExchange,
-                Data = serverRsa.Encrypt(_serializer.Serialize<ClientKeyExchange>(clientKeyExchange))
+                Data = data
             };
             var requestBytes = _serializer.Serialize<SecurityLayerMessage>(request);
             Send(requestBytes);

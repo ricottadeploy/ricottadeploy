@@ -92,10 +92,11 @@ namespace Ricotta.Transport
                     Random = random,
                     RSAPublicPem = _rsa.PublicPem
                 };
+                var data = _serializer.Serialize<ServerHello>(serverHello);
                 var response = new SecurityLayerMessage
                 {
                     Type = SecurityMessageType.ServerHello,
-                    Data = _serializer.Serialize<ServerHello>(serverHello)
+                    Data = data
                 };
                 var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
                 Send(responseBytes);
@@ -106,10 +107,11 @@ namespace Ricotta.Transport
                 {
                     Status = clientAuthInfo.AuthenticationStatus
                 };
+                var data = _serializer.Serialize<ServerAuthenticationStatus>(serverAuthenticationStatus);
                 var response = new SecurityLayerMessage
                 {
                     Type = SecurityMessageType.ServerAuthenticationStatus,
-                    Data = _serializer.Serialize<ServerAuthenticationStatus>(serverAuthenticationStatus)
+                    Data = data
                 };
                 var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
                 Send(responseBytes);
@@ -140,10 +142,11 @@ namespace Ricotta.Transport
                 SessionId = session.Id,
                 PublishAesKey = _publisher.Aes.Key
             };
+            var data = _serializer.Serialize<ServerFinished>(serverFinished);
             var response = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ServerFinished,
-                Data = _serializer.Serialize<ServerFinished>(serverFinished)
+                Data = data
             };
             var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
             Send(responseBytes);
