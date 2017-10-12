@@ -181,10 +181,8 @@ namespace Ricotta.Master
 
         private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage message)
         {
-            var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
-            _clientAuthInfoCache.Deny("fingerprint here");
-            _publisher.Aes.RegenerateKey();
-            _sessionCache.Clear();
+            var commandRunDeployment = _serializer.Deserialize<CommandRunDeployment>(message.Data);
+            Log.Debug($"Run Deployment: {commandRunDeployment.DeploymentYaml}");
             return null;
         }
 
