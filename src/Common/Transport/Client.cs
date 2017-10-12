@@ -213,10 +213,6 @@ namespace Ricotta.Transport
 
         private void Send(byte[] data)
         {
-            if (!_session.IsAuthenticated)
-            {
-                throw new Exception("Not authenticated");
-            }
             _socket.SendFrame(data);
         }
 
