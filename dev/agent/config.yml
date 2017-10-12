@@ -1,0 +1,12 @@
+id: agent-1
+logging:
+  level: debug
+master:
+  publish_url: tcp://localhost:5556
+  request_url: tcp://localhost:5557
+authentication:
+  interval: 10
+  max_attempts: 5
+keys_path: C:\ricottadev\agent\keys
+filerepository_path: C:\ricottadev\agent\files
+work_path: C:\ricottadev\agent\work
