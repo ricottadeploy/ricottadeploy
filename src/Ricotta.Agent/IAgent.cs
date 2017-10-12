@@ -1,3 +1,4 @@
+
 namespace Ricotta.Agent
 {
     public interface IAgent

@@ -1,12 +1,10 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using System.IO;
+using System.Linq;
+using Microsoft.Extensions.Configuration;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Linq;
 using Ricotta.Transport.Messages.Application;
 
 namespace Ricotta.Master.Cli

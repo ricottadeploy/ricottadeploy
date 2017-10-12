@@ -1,13 +1,12 @@
-using System;
 using System.IO;
 using System.Threading;
 using Microsoft.Extensions.Configuration;
 using NetMQ;
 using NetMQ.Sockets;
+using Serilog;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
-using Serilog;
 
 namespace Ricotta.Master
 {

@@ -1,11 +1,7 @@
-using System;
 using NetMQ;
+using NetMQ.Sockets;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
-using Ricotta.Transport.Messages.SecurityLayer;
-using Ricotta.Transport;
-using NetMQ.Sockets;
-using Serilog;
 using Ricotta.Transport.Messages.Publish;
 
 namespace Ricotta.Transport
@@ -51,7 +47,7 @@ namespace Ricotta.Transport
                 Selector = selector,
                 AesIv = aesIv,
                 Type = PublishMessageType.ExecuteModuleMethod,
-                Data = EncryptAes(_serializer.Serialize<ExecuteModuleMethod>(executeModuleMethod), _aes.Key, aesIv)
+                Data = Aes.Encrypt(_serializer.Serialize<ExecuteModuleMethod>(executeModuleMethod), _aes.Key, aesIv)
             };
             var bytes = _serializer.Serialize<PublishMessage>(publishMessage);
             Send(bytes);
@@ -60,12 +56,6 @@ namespace Ricotta.Transport
         private void Send(byte[] data)
         {
             _socket.SendFrame(data);
-        }
-
-        private byte[] EncryptAes(byte[] data, byte[] key, byte[] iv)
-        {
-            var aes = Aes.Create(key, iv);
-            return aes.Encrypt(data);
         }
 
     }

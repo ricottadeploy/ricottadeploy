@@ -69,7 +69,7 @@ namespace Ricotta.Transport
 
         private ClientStatus? SendClientHello(int milliseconds = 0)
         {
-            var random = TLS12.GetRandom();
+            var random = Tls12.GetRandom();
             _session.ClientRandom = random;
             var clientHello = new ClientHello
             {
@@ -110,8 +110,8 @@ namespace Ricotta.Transport
 
         private bool SendClientKeyExchange(int milliseconds)
         {
-            var preMasterSecret = TLS12.GetPreMasterSecret();
-            _session.MasterSecret = TLS12.GetMasterSecret(preMasterSecret, _session.ClientRandom, _session.ServerRandom);
+            var preMasterSecret = Tls12.GetPreMasterSecret();
+            _session.MasterSecret = Tls12.GetMasterSecret(preMasterSecret, _session.ClientRandom, _session.ServerRandom);
             var clientKeyExchange = new ClientKeyExchange
             {
                 SessionId = _session.Id,
@@ -134,11 +134,11 @@ namespace Ricotta.Transport
             var serverFinished = _serializer.Deserialize<ServerFinished>(message.Data);
 
             _session.Id = serverFinished.SessionId;
-            var keys = TLS12.GetKeys(_session.MasterSecret, _session.ClientRandom, _session.ServerRandom);
-            _session.ClientWriteMACKey = TLS12.GetClientWriteMACKey(keys);
-            _session.ServerWriteMACKey = TLS12.GetServerWriteMACKey(keys);
-            _session.ClientWriteKey = TLS12.GetClientWriteKey(keys);
-            _session.ServerWriteKey = TLS12.GetServerWriteKey(keys);
+            var keys = Tls12.GetKeys(_session.MasterSecret, _session.ClientRandom, _session.ServerRandom);
+            _session.ClientWriteMACKey = Tls12.GetClientWriteMACKey(keys);
+            _session.ServerWriteMACKey = Tls12.GetServerWriteMACKey(keys);
+            _session.ClientWriteKey = Tls12.GetClientWriteKey(keys);
+            _session.ServerWriteKey = Tls12.GetServerWriteKey(keys);
             _session.PublishKey = serverFinished.PublishAesKey;
             _session.IsAuthenticated = true;
 
@@ -171,12 +171,12 @@ namespace Ricotta.Transport
             {
                 throw new Exception("Not authenticated");
             }
-            var aesIv = TLS12.GetIV();
+            var aesIv = Tls12.GetIV();
             var applicationData = new ApplicationData
             {
                 SessionId = _session.Id,
                 AesIv = aesIv,
-                Data = EncryptAes(data, _session.ClientWriteKey, aesIv)
+                Data = Aes.Encrypt(data, _session.ClientWriteKey, aesIv)
             };
             var bytes = _serializer.Serialize<ApplicationData>(applicationData);
             var message = new SecurityLayerMessage
@@ -199,19 +199,7 @@ namespace Ricotta.Transport
             {
                 // Something is wrong. Handle it!
             }
-            return DecryptAes(applicationData.Data, _session.ServerWriteKey, applicationData.AesIv);
-        }
-
-        private byte[] EncryptAes(byte[] data, byte[] key, byte[] iv)
-        {
-            var aes = Aes.Create(key, iv);
-            return aes.Encrypt(data);
-        }
-
-        private byte[] DecryptAes(byte[] data, byte[] key, byte[] iv)
-        {
-            var aes = Aes.Create(key, iv);
-            return aes.Decrypt(data);
+            return Aes.Decrypt(applicationData.Data, _session.ServerWriteKey, applicationData.AesIv);
         }
 
     }

@@ -1,3 +1,4 @@
+
 namespace Ricotta.Cryptography
 {
     public interface ICryptoProvider

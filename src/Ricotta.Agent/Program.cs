@@ -1,14 +1,10 @@
 ﻿using System;
-using MessagePack;
-using Ricotta.Serialization;
-using Ricotta.Transport;
-using Ricotta.Transport.Messages.SecurityLayer;
+using System.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using NetEscapades.Configuration.Yaml;
+using Ricotta.Serialization;
 using Ricotta.Logging;
-using System.IO;
 
 namespace Ricotta.Agent
 {

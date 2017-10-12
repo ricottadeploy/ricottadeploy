@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Concurrent;
 
 namespace Ricotta.Transport
 {

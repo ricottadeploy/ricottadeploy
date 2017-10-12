@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace Ricotta.Master.Cli
 {
     public interface IMasterCli

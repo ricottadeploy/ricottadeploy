@@ -1,11 +1,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
-using Ricotta.Transport.Messages;
 using Ricotta.Transport.Messages.Application;
 using Serilog;
 

@@ -1,14 +1,7 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using Ricotta.Cryptography;
-using Ricotta.Serialization;
-using Ricotta.Transport;
-using Ricotta.Transport.Messages;
-using Ricotta.Transport.Messages.Application;
 using Serilog;
+using Ricotta.Cryptography;
+using Ricotta.Transport;
 
 namespace Ricotta.Master
 {
@@ -16,8 +9,7 @@ namespace Ricotta.Master
     {
         private Publisher _publisher;
 
-        public TestThread(
-                        Publisher publisher)
+        public TestThread(Publisher publisher)
         {
             _publisher = publisher;
             while (true)

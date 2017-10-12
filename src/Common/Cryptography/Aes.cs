@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using sc = System.Security.Cryptography;
 
 namespace Ricotta.Cryptography
@@ -86,6 +83,18 @@ namespace Ricotta.Cryptography
                     return memoryStream.ToArray();
                 }
             }
+        }
+
+        public static byte[] Encrypt(byte[] data, byte[] key, byte[] iv)
+        {
+            var aes = Aes.Create(key, iv);
+            return aes.Encrypt(data);
+        }
+
+        public static byte[] Decrypt(byte[] data, byte[] key, byte[] iv)
+        {
+            var aes = Aes.Create(key, iv);
+            return aes.Decrypt(data);
         }
     }
 }

@@ -2,9 +2,9 @@
 using System.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using Ricotta.Logging;
 using Ricotta.Serialization;
-using Serilog;
 
 namespace Ricotta.Master
 {

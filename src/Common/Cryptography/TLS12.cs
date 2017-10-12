@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Ricotta.Cryptography
 {
-    public class TLS12
+    public class Tls12
     {
         public static byte[] GetRandomBytes(int length)
         {

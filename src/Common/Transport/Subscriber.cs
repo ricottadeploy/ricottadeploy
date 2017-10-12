@@ -1,11 +1,8 @@
 using System;
 using NetMQ;
+using NetMQ.Sockets;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
-using Ricotta.Transport.Messages.SecurityLayer;
-using Ricotta.Transport;
-using NetMQ.Sockets;
-using Serilog;
 using Ricotta.Transport.Messages.Publish;
 
 namespace Ricotta.Transport
@@ -38,7 +35,7 @@ namespace Ricotta.Transport
                 var messageBytes = Receive();
                 var message = _serializer.Deserialize<PublishMessage>(messageBytes);
                 // TODO: Check Selector to see if message is meant for this subscriber 
-                var decryptedMessageData = DecryptAes(message.Data, _aesKey, message.AesIv);
+                var decryptedMessageData = Aes.Decrypt(message.Data, _aesKey, message.AesIv);
                 if (message.Type == PublishMessageType.ExecuteModuleMethod)
                 {
                     var executeModuleMethod = _serializer.Deserialize<ExecuteModuleMethod>(decryptedMessageData);
@@ -50,12 +47,6 @@ namespace Ricotta.Transport
         private byte[] Receive()
         {
             return _socket.ReceiveFrameBytes();
-        }
-
-        private byte[] DecryptAes(byte[] data, byte[] key, byte[] iv)
-        {
-            var aes = Aes.Create(key, iv);
-            return aes.Decrypt(data);
         }
 
         public void DefaultExecuteModuleMethodHandler(ExecuteModuleMethod message)

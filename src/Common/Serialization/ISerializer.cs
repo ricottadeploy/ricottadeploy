@@ -1,3 +1,4 @@
+
 namespace Ricotta.Serialization
 {
     public interface ISerializer

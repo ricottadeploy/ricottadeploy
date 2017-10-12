@@ -1,13 +1,10 @@
 ﻿using System;
 using System.IO;
-using Ricotta.Cryptography;
-using Ricotta.Serialization;
-using Ricotta.Transport;
-using Ricotta.Transport.Messages.Application;
 using Microsoft.Extensions.Configuration;
-using Ricotta.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using Ricotta.Serialization;
+using Ricotta.Logging;
 
 namespace Ricotta.Master.Cli
 {
@@ -24,26 +21,6 @@ namespace Ricotta.Master.Cli
             var services = new ServiceCollection();
             ConfigureServices(services);
             Start(services.BuildServiceProvider(), args);
-
-            //var requestUrl = "tcp://127.0.0.1:5557";
-            //var privatePem = File.ReadAllText(@"C:\ricottadev\master\keys\master\private.pem");
-            //var rsa = Rsa.CreateFromPrivatePEM(privatePem);
-            //var client = new Client("!", serializer, rsa, requestUrl);
-            //var result = client.TryAuthenticating(2000);
-            //if (result == ClientStatus.Accepted)
-            //{
-            //    var commandRunDeployment = new CommandRunDeployment
-            //    {
-            //        DeploymentYaml = "test.yaml"
-            //    };
-            //    var applicationMessage = new ApplicationMessage
-            //    {
-            //        Type = ApplicationMessageType.CommandRunDeployment,
-            //        Data = serializer.Serialize<CommandRunDeployment>(commandRunDeployment)
-            //    };
-            //    var bytes = serializer.Serialize<ApplicationMessage>(applicationMessage);
-            //    client.SendApplicationData(bytes);
-            //}
         }
 
         private static void LoadConfiguration()
