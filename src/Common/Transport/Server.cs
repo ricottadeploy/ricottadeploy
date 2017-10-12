@@ -33,6 +33,8 @@ namespace Ricotta.Transport
             _publisher = publisher;
             _sessionCache = sessionCache;
             _clientAuthInfoCache = clientAuthInfoCache;
+            // Accept requests coming from CLI. CLI uses master's RSA keys so add its fingerprint as accepted.
+            _clientAuthInfoCache.Add(_rsa.Fingerprint, "!", ClientStatus.Accepted);
             _socket = new ResponseSocket();
             _socket.Connect(serverUri);
         }
@@ -81,7 +83,15 @@ namespace Ricotta.Transport
             Log.Debug($"{clientHello.ClientId} authentication status: {clientAuthInfo.AuthenticationStatus}");
             if (clientAuthInfo.AuthenticationStatus == ClientStatus.Accepted)
             {
-                var session = _sessionCache.NewSession();
+                Session session = null;
+                if (clientHello.ClientId == "!")
+                {
+                    session = _sessionCache.NewCommandSession();
+                }
+                else
+                {
+                    session = _sessionCache.NewSession();
+                }
                 var random = TLS12.GetRandom();
                 session.ServerRandom = random;
                 session.ClientRandom = clientHello.Random;
@@ -173,6 +183,10 @@ namespace Ricotta.Transport
                 };
                 var bytes = _serializer.Serialize<ApplicationData>(applicationDataResponse);
                 Send(bytes);
+            }
+            if (_sessionCache.IsCommandSession(session.Id))
+            {
+                _sessionCache.Destroy(session.Id);
             }
         }
 

@@ -22,6 +22,21 @@ namespace Ricotta.Transport
             return session;
         }
 
+        public Session NewCommandSession()
+        {
+            var session = new Session
+            {
+                Id = $"*{Guid.NewGuid().ToString()}"
+            };
+            _sessions.TryAdd(session.Id, session);
+            return session;
+        }
+
+        public bool IsCommandSession(string sessionId)
+        {
+            return sessionId.StartsWith("*");
+        }
+
         public Session Get(string sessionId)
         {
             if (_sessions.ContainsKey(sessionId))
