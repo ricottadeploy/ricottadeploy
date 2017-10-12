@@ -174,18 +174,38 @@ namespace Ricotta.Master
 
         private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage message)
         {
-            var commandAgentDeny = _serializer.Deserialize<CommandAgentAccept>(message.Data);
-            _clientAuthInfoCache.Accept("fingerprint here");
-            return null;
+            var commandAgentAccept = _serializer.Deserialize<CommandAgentAccept>(message.Data);
+            var acceptedIds = new List<string>();
+            _clientAuthInfoCache.AcceptById(commandAgentAccept.Selector);
+            acceptedIds.Add(commandAgentAccept.Selector);
+            var masterAgentAccept = new MasterAgentAccept
+            {
+                Agents = acceptedIds
+            };
+            var response = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterAgentAccept,
+                Data = _serializer.Serialize<MasterAgentAccept>(masterAgentAccept)
+            };
+            return response;
         }
 
         private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage message)
         {
-            var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(message.Data);
-            _clientAuthInfoCache.Deny("fingerprint here");
-            _publisher.Aes.RegenerateKey();
-            _sessionCache.Clear();
-            return null;
+            var commandAgentDeny  = _serializer.Deserialize<CommandAgentDeny>(message.Data);
+            var deniedIds = new List<string>();
+            _clientAuthInfoCache.DenyById(commandAgentDeny.Selector);
+            deniedIds.Add(commandAgentDeny.Selector);
+            var masterAgentDeny = new MasterAgentDeny
+            {
+                Agents = deniedIds
+            };
+            var response = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterAgentDeny,
+                Data = _serializer.Serialize<MasterAgentDeny>(masterAgentDeny)
+            };
+            return response;
         }
 
         private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage message)

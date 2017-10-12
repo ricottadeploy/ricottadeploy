@@ -133,6 +133,7 @@ namespace Ricotta.Master.Cli
             };
             var bytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
             client.SendApplicationData(bytes);
+
             var response = client.ReceiveApplicationData();
             var responseMessage = _serializer.Deserialize<ApplicationMessage>(response);
             if (responseMessage.Type == ApplicationMessageType.MasterAgentList)
@@ -151,10 +152,78 @@ namespace Ricotta.Master.Cli
 
         private void AgentAccept(string selector)
         {
+            var rsa = GetRsa();
+            var client = new Client("!", _serializer, GetRsa(), GetRequestUrl());
+            var result = client.TryAuthenticating();
+            if (result != ClientStatus.Accepted)
+            {
+                Console.WriteLine("Error while authenticating with master");
+                Environment.Exit(0);
+            }
+            var commandAgentAccept = new CommandAgentAccept 
+            {
+                Selector = selector
+            };
+            var applicationMessage = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.CommandAgentAccept,
+                Data = _serializer.Serialize<CommandAgentAccept>(commandAgentAccept)
+            };
+            var bytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
+            client.SendApplicationData(bytes);
+
+            var response = client.ReceiveApplicationData();
+            var responseMessage = _serializer.Deserialize<ApplicationMessage>(response);
+            if (responseMessage.Type == ApplicationMessageType.MasterAgentAccept)
+            {
+                var masterAgentAccept = _serializer.Deserialize<MasterAgentAccept>(responseMessage.Data);
+                foreach (var agentId  in masterAgentAccept.Agents)
+                {
+                    Console.WriteLine($"{agentId}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Error");
+            }
         }
 
         private void AgentDeny(string selector)
         {
+            var rsa = GetRsa();
+            var client = new Client("!", _serializer, GetRsa(), GetRequestUrl());
+            var result = client.TryAuthenticating();
+            if (result != ClientStatus.Accepted)
+            {
+                Console.WriteLine("Error while authenticating with master");
+                Environment.Exit(0);
+            }
+            var commandAgentDeny = new CommandAgentDeny
+            {
+                Selector = selector
+            };
+            var applicationMessage = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.CommandAgentDeny,
+                Data = _serializer.Serialize<CommandAgentDeny>(commandAgentDeny)
+            };
+            var bytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
+            client.SendApplicationData(bytes);
+
+            var response = client.ReceiveApplicationData();
+            var responseMessage = _serializer.Deserialize<ApplicationMessage>(response);
+            if (responseMessage.Type == ApplicationMessageType.MasterAgentDeny)
+            {
+                var masterAgentDeny = _serializer.Deserialize<MasterAgentDeny>(responseMessage.Data);
+                foreach (var agentId in masterAgentDeny.Agents)
+                {
+                    Console.WriteLine($"{agentId}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Error");
+            }
         }
 
         private void RunDeployment(string yamlContent)
