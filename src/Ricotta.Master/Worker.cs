@@ -86,9 +86,9 @@ namespace Ricotta.Master
             return _serializer.Serialize<ApplicationMessage>(response);
         }
 
-        private ApplicationMessage HandleAgentFileInfo(ApplicationMessage message)
+        private ApplicationMessage HandleAgentFileInfo(ApplicationMessage applicationMessage)
         {
-            var agentFileInfo = _serializer.Deserialize<AgentFileInfo>(message.Data);
+            var agentFileInfo = _serializer.Deserialize<AgentFileInfo>(applicationMessage.Data);
             FileInfo fileInfo = null;
             string sha256 = null;
             try
@@ -107,21 +107,22 @@ namespace Ricotta.Master
                 IsDirectory = (fileInfo.Attributes & FileAttributes.Directory) == FileAttributes.Directory,
                 Sha256 = sha256
             };
-            var response = new ApplicationMessage
+            var masterFileInfoBytes = _serializer.Serialize<MasterFileInfo>(masterFileInfo);
+            var responseApplicationMessage = new ApplicationMessage
             {
                 Type = ApplicationMessageType.MasterFileInfo,
-                Data = _serializer.Serialize<MasterFileInfo>(masterFileInfo)
+                Data = masterFileInfoBytes
             };
-            return response;
+            return responseApplicationMessage;
         }
 
-        private ApplicationMessage HandleAgentFileChunk(ApplicationMessage message)
+        private ApplicationMessage HandleAgentFileChunk(ApplicationMessage applicationMessage)
         {
-            var agentFileChunk = _serializer.Deserialize<AgentFileChunk>(message.Data);
-            byte[] bytes;
+            var agentFileChunk = _serializer.Deserialize<AgentFileChunk>(applicationMessage.Data);
+            byte[] chunk;
             try
             {
-                bytes = _fileRepository.GetFileChunk(agentFileChunk.FileUri, agentFileChunk.Offset, agentFileChunk.Size);
+                chunk = _fileRepository.GetFileChunk(agentFileChunk.FileUri, agentFileChunk.Offset, agentFileChunk.Size);
             }
             catch (FileNotFoundException)
             {
@@ -130,49 +131,53 @@ namespace Ricotta.Master
 
             var masterFileChunk = new MasterFileChunk
             {
-                Data = bytes
+                Data = chunk
             };
-            var response = new ApplicationMessage
+            var masterFileChunkBytes = _serializer.Serialize<MasterFileChunk>(masterFileChunk);
+            var responseApplicationMessage = new ApplicationMessage
             {
                 Type = ApplicationMessageType.MasterFileChunk,
-                Data = _serializer.Serialize<MasterFileChunk>(masterFileChunk)
+                Data = masterFileChunkBytes
             };
-            return response;
+            return responseApplicationMessage;
         }
 
-        private ApplicationMessage HandleAgentModuleInfo(ApplicationMessage message)
+        private ApplicationMessage HandleAgentModuleInfo(ApplicationMessage applicationMessage)
         {
-            var agentModuleInfo = _serializer.Deserialize<AgentModuleInfo>(message.Data);
+            var agentModuleInfo = _serializer.Deserialize<AgentModuleInfo>(applicationMessage.Data);
             var masterModuleInfo = new MasterModuleInfo
             {
                 FileUri = null
             };
-            var response = new ApplicationMessage
+            var masterModuleInfoBytes = _serializer.Serialize<MasterModuleInfo>(masterModuleInfo);
+            var responseApplicationMessage = new ApplicationMessage
             {
                 Type = ApplicationMessageType.MasterModuleInfo,
-                Data = _serializer.Serialize<MasterModuleInfo>(masterModuleInfo)
+                Data = masterModuleInfoBytes
             };
-            return response;
+            return responseApplicationMessage;
         }
 
-        private ApplicationMessage HandleCommandAgentList(ApplicationMessage message)
+        private ApplicationMessage HandleCommandAgentList(ApplicationMessage applicationMessage)
         {
-            var commandAgentList = _serializer.Deserialize<CommandAgentList>(message.Data);
+            var commandAgentList = _serializer.Deserialize<CommandAgentList>(applicationMessage.Data);
+            var clientAuthInfoList = _clientAuthInfoCache.GetList().Where(x => x.ClientId != "!").ToList();
             var masterAgentList = new MasterAgentList
             {
-                Agents = _clientAuthInfoCache.GetList().Where(x => x.ClientId != "!").ToList()
+                Agents = clientAuthInfoList
             };
-            var response = new ApplicationMessage
+            var masterAgentListBytes = _serializer.Serialize<MasterAgentList>(masterAgentList);
+            var responseApplicationMessage = new ApplicationMessage
             {
                 Type = ApplicationMessageType.MasterAgentList,
-                Data = _serializer.Serialize<MasterAgentList>(masterAgentList)
+                Data = masterAgentListBytes
             };
-            return response;
+            return responseApplicationMessage;
         }
 
-        private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage message)
+        private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage applicationMessage)
         {
-            var commandAgentAccept = _serializer.Deserialize<CommandAgentAccept>(message.Data);
+            var commandAgentAccept = _serializer.Deserialize<CommandAgentAccept>(applicationMessage.Data);
             var acceptedIds = new List<string>();
             _clientAuthInfoCache.AcceptById(commandAgentAccept.Selector);
             acceptedIds.Add(commandAgentAccept.Selector);
@@ -180,17 +185,18 @@ namespace Ricotta.Master
             {
                 Agents = acceptedIds
             };
-            var response = new ApplicationMessage
+            var masterAgentAcceptBytes = _serializer.Serialize<MasterAgentAccept>(masterAgentAccept);
+            var responseApplicationMessage = new ApplicationMessage
             {
                 Type = ApplicationMessageType.MasterAgentAccept,
-                Data = _serializer.Serialize<MasterAgentAccept>(masterAgentAccept)
+                Data = masterAgentAcceptBytes
             };
-            return response;
+            return responseApplicationMessage;
         }
 
-        private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage message)
+        private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage applicationMessage)
         {
-            var commandAgentDeny  = _serializer.Deserialize<CommandAgentDeny>(message.Data);
+            var commandAgentDeny  = _serializer.Deserialize<CommandAgentDeny>(applicationMessage.Data);
             var deniedIds = new List<string>();
             _clientAuthInfoCache.DenyById(commandAgentDeny.Selector);
             deniedIds.Add(commandAgentDeny.Selector);
@@ -198,17 +204,18 @@ namespace Ricotta.Master
             {
                 Agents = deniedIds
             };
-            var response = new ApplicationMessage
+            var masterAgentDenyBytes = _serializer.Serialize<MasterAgentDeny>(masterAgentDeny);
+            var responseApplicationMessage = new ApplicationMessage
             {
                 Type = ApplicationMessageType.MasterAgentDeny,
-                Data = _serializer.Serialize<MasterAgentDeny>(masterAgentDeny)
+                Data = masterAgentDenyBytes
             };
-            return response;
+            return responseApplicationMessage;
         }
 
-        private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage message)
+        private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage applicationMessage)
         {
-            var commandRunDeployment = _serializer.Deserialize<CommandRunDeployment>(message.Data);
+            var commandRunDeployment = _serializer.Deserialize<CommandRunDeployment>(applicationMessage.Data);
             Log.Debug($"Run Deployment: {commandRunDeployment.DeploymentYaml}");
             return null;
         }

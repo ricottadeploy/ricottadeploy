@@ -36,21 +36,6 @@ namespace Ricotta.Master
             LoadPreAcceptedAgents();
         }
 
-        private void LoadPreAcceptedAgents()
-        {
-            var keysPath = _config["keys_path"];
-            var agentKeysPath = Path.Combine(keysPath, "agent");
-            var agentPublicKeyFiles = Directory.GetFiles(agentKeysPath, "*.pem");
-            foreach (var agentPublicKeyFile in agentPublicKeyFiles)
-            {
-                var agentId = Path.GetFileNameWithoutExtension(agentPublicKeyFile);
-                var agentPublicPem = File.ReadAllText(agentPublicKeyFile);
-                var agentRsa = Rsa.CreateFromPublicPEM(agentPublicPem);
-                _clientAuthInfoCache.Add(agentRsa.Fingerprint, agentId, ClientStatus.Accepted);
-                Log.Information($"Trusted agent {agentId} with RSA fingerprint {agentRsa.Fingerprint}");
-            }
-        }
-
         public void Start()
         {
             int workerId = 0;
@@ -59,7 +44,6 @@ namespace Ricotta.Master
             var publish_url = _config["bind:publish_url"];
             Log.Information($"Starting publish server at {publish_url}");
             _publisher = new Publisher(_serializer, _publishAes, _config["bind:publish_url"]);
-
             using (var clients = new RouterSocket())
             {
                 using (var workers = new DealerSocket())
@@ -107,6 +91,21 @@ namespace Ricotta.Master
             }
             Log.Information($"RSA fingerprint is {rsa.Fingerprint}");
             return rsa;
+        }
+
+        private void LoadPreAcceptedAgents()
+        {
+            var keysPath = _config["keys_path"];
+            var agentKeysPath = Path.Combine(keysPath, "agent");
+            var agentPublicKeyFiles = Directory.GetFiles(agentKeysPath, "*.pem");
+            foreach (var agentPublicKeyFile in agentPublicKeyFiles)
+            {
+                var agentId = Path.GetFileNameWithoutExtension(agentPublicKeyFile);
+                var agentPublicPem = File.ReadAllText(agentPublicKeyFile);
+                var agentRsa = Rsa.CreateFromPublicPEM(agentPublicPem);
+                _clientAuthInfoCache.Add(agentRsa.Fingerprint, agentId, ClientStatus.Accepted);
+                Log.Information($"Trusted agent {agentId} with RSA fingerprint {agentRsa.Fingerprint}");
+            }
         }
 
     }

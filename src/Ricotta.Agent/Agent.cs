@@ -6,6 +6,7 @@ using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
 using Serilog;
+using Ricotta.Transport.Messages.Publish;
 
 namespace Ricotta.Agent
 {
@@ -28,13 +29,13 @@ namespace Ricotta.Agent
 
         public void Start()
         {
-            _agentId = _config["id"];
             var reqServerUrl = _config["master:request_url"];
-            _client = new Client(_agentId, _serializer, _rsa, reqServerUrl);
             var interval = int.Parse(_config["authentication:interval"]);
             var intervalMs = interval * 1000;
             var maxAttempts = int.Parse(_config["authentication:max_attempts"]);
             var timeoutMs = 2000;
+            _agentId = _config["id"];
+            _client = new Client(_agentId, _serializer, _rsa, reqServerUrl);
             int attempt = 0;
             for (attempt = 0; attempt < maxAttempts; attempt++)
             {
@@ -47,17 +48,16 @@ namespace Ricotta.Agent
                 }
                 else if (status == ClientStatus.Accepted)
                 {
+                    Log.Debug("Authentication successful!");
                     break;
                 }
                 Thread.Sleep(intervalMs);
             }
             if (attempt == maxAttempts)
             {
-                Log.Error("Maxium authentication attempts made with no success. Exiting.");
+                Log.Error("Maximum authentication attempts made with no success. Exiting.");
                 Environment.Exit(0);
             }
-            Log.Debug("Authentication successful");
-
             Listen();
         }
 
@@ -65,12 +65,14 @@ namespace Ricotta.Agent
         {
             var publishUrl = _config["master:publish_url"];
             var subscriber = new Subscriber(_serializer, _client.Session.PublishKey, _agentId, publishUrl);
-            subscriber.SetExecuteModuleMethodHandler(executeModuleMethod =>
-            {
-                Log.Debug($"{executeModuleMethod.Module}.{executeModuleMethod.Method}");
-            });
+            subscriber.SetExecuteModuleMethodHandler(HandleExecuteModuleMethod);
             Log.Debug($"Subscribing to master at {publishUrl}");
             subscriber.Listen();
+        }
+
+        private void HandleExecuteModuleMethod(ExecuteModuleMethod executeModuleMethod)
+        {
+            Log.Debug($"{executeModuleMethod.Module}.{executeModuleMethod.Method}");
         }
 
         private Rsa GetRsaKeys()
