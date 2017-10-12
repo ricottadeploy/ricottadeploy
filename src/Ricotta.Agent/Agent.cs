@@ -64,7 +64,7 @@ namespace Ricotta.Agent
         private void Listen()
         {
             var publishUrl = _config["master:publish_url"];
-            var subscriber = new Subscriber(_serializer, _client.Session.PublishKey, publishUrl);
+            var subscriber = new Subscriber(_serializer, _client.Session.PublishKey, _agentId, publishUrl);
             subscriber.SetExecuteModuleMethodHandler(executeModuleMethod =>
             {
                 Log.Debug($"{executeModuleMethod.Module}.{executeModuleMethod.Method}");

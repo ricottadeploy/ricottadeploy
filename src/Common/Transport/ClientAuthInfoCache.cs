@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace Ricotta.Transport
 {
+    /// <summary>
+    /// Used to store the authentication status of clients
+    /// </summary>
     public class ClientAuthInfoCache
     {
         private ConcurrentDictionary<string, ClientAuthInfo> _clients;      // <RSAFingerprint, ClientAuthInfo>
@@ -36,22 +39,6 @@ namespace Ricotta.Transport
         public List<ClientAuthInfo> GetList()
         {
             return _clients.Values.ToList();
-        }
-
-        private void SetClientStatus(string rsaFingerprint, ClientStatus clientStatus)
-        {
-            if (_clients.ContainsKey(rsaFingerprint))
-            {
-                _clients[rsaFingerprint].AuthenticationStatus = clientStatus;
-            }
-        }
-
-        private void SetClientStatusById(string clientId, ClientStatus clientStatus)
-        {
-            if (_clientsById.ContainsKey(clientId))
-            {
-                _clientsById[clientId].AuthenticationStatus = clientStatus;
-            }
         }
 
         public ClientAuthInfo Add(string rsaFingerprint, string clientId, ClientStatus clientStatus = ClientStatus.Pending)
@@ -111,6 +98,22 @@ namespace Ricotta.Transport
         public void PendingById(string clientId)
         {
             SetClientStatusById(clientId, ClientStatus.Pending);
+        }
+
+        private void SetClientStatus(string rsaFingerprint, ClientStatus clientStatus)
+        {
+            if (_clients.ContainsKey(rsaFingerprint))
+            {
+                _clients[rsaFingerprint].AuthenticationStatus = clientStatus;
+            }
+        }
+
+        private void SetClientStatusById(string clientId, ClientStatus clientStatus)
+        {
+            if (_clientsById.ContainsKey(clientId))
+            {
+                _clientsById[clientId].AuthenticationStatus = clientStatus;
+            }
         }
 
     }

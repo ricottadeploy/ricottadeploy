@@ -15,9 +15,11 @@ namespace Ricotta.Transport
         private ISerializer _serializer;
         private byte[] _aesKey;
         private SubscriberSocket _socket;
+        private string _clientId;
 
         public Subscriber(ISerializer serializer,
                             byte[] aesKey,
+                            string clientId,
                             string publishUri)
         {
             _serializer = serializer;
@@ -32,14 +34,20 @@ namespace Ricotta.Transport
         {
             while (true)
             {
-                var messageBytes = Receive();
-                var message = _serializer.Deserialize<PublishMessage>(messageBytes);
-                // TODO: Check Selector to see if message is meant for this subscriber 
-                var decryptedMessageData = Aes.Decrypt(message.Data, _aesKey, message.AesIv);
-                if (message.Type == PublishMessageType.ExecuteModuleMethod)
+                var publishMessageBytes = Receive();
+                var publishMessage = _serializer.Deserialize<PublishMessage>(publishMessageBytes);
+                if (publishMessage.Selector == "*" || publishMessage.Selector == _clientId)
                 {
-                    var executeModuleMethod = _serializer.Deserialize<ExecuteModuleMethod>(decryptedMessageData);
-                    _executeModuleMethodHandler(executeModuleMethod);
+                    var decryptedMessageBytes = Aes.Decrypt(publishMessage.Data, _aesKey, publishMessage.AesIv);
+                    if (publishMessage.Type == PublishMessageType.ExecuteModuleMethod)
+                    {
+                        var executeModuleMethod = _serializer.Deserialize<ExecuteModuleMethod>(decryptedMessageBytes);
+                        _executeModuleMethodHandler(executeModuleMethod);
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
                 }
             }
         }
@@ -49,7 +57,7 @@ namespace Ricotta.Transport
             return _socket.ReceiveFrameBytes();
         }
 
-        public void DefaultExecuteModuleMethodHandler(ExecuteModuleMethod message)
+        private void DefaultExecuteModuleMethodHandler(ExecuteModuleMethod message)
         {
         }
 

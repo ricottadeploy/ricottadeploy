@@ -3,8 +3,14 @@ using System.Collections.Concurrent;
 
 namespace Ricotta.Transport
 {
+    /// <summary>
+    /// Used to store sessions. 
+    /// Sessions for clients and CLI are different. This is necessary as CLI sessions need to be destroyed as soon as the server
+    /// returns the response.
+    /// </summary>
     public class SessionCache
     {
+        private const string CLI_SESSION_PREFIX = "*";
         private ConcurrentDictionary<string, Session> _sessions;
 
         public SessionCache()
@@ -22,19 +28,19 @@ namespace Ricotta.Transport
             return session;
         }
 
-        public Session NewCommandSession()
+        public Session NewCliSession()
         {
             var session = new Session
             {
-                Id = $"*{Guid.NewGuid().ToString()}"
+                Id = $"{CLI_SESSION_PREFIX}{Guid.NewGuid().ToString()}"
             };
             _sessions.TryAdd(session.Id, session);
             return session;
         }
 
-        public bool IsCommandSession(string sessionId)
+        public bool IsCliSession(string sessionId)
         {
-            return sessionId.StartsWith("*");
+            return sessionId.StartsWith(CLI_SESSION_PREFIX);
         }
 
         public Session Get(string sessionId)

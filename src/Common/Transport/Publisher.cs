@@ -42,15 +42,17 @@ namespace Ricotta.Transport
                 Method = method,
                 Arguments = arguments
             };
+            var executeModuleMethodBytes = _serializer.Serialize<ExecuteModuleMethod>(executeModuleMethod);
+            var encryptedExecuteModuleMethodBytes = Aes.Encrypt(executeModuleMethodBytes, _aes.Key, aesIv);
             var publishMessage = new PublishMessage
             {
                 Selector = selector,
                 AesIv = aesIv,
                 Type = PublishMessageType.ExecuteModuleMethod,
-                Data = Aes.Encrypt(_serializer.Serialize<ExecuteModuleMethod>(executeModuleMethod), _aes.Key, aesIv)
+                Data = encryptedExecuteModuleMethodBytes
             };
-            var bytes = _serializer.Serialize<PublishMessage>(publishMessage);
-            Send(bytes);
+            var publishMessageBytes = _serializer.Serialize<PublishMessage>(publishMessage);
+            Send(publishMessageBytes);
         }
 
         private void Send(byte[] data)

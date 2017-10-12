@@ -11,6 +11,7 @@ namespace Ricotta.Transport
 {
     public class Server
     {
+        private const string CLI_CLIENT_ID = "!";
         public delegate byte[] OnApplicationDataReceivedCallback(byte[] data);
         private OnApplicationDataReceivedCallback _onApplicationDataReceivedCallback;
         private ISerializer _serializer;
@@ -33,46 +34,47 @@ namespace Ricotta.Transport
             _publisher = publisher;
             _sessionCache = sessionCache;
             _clientAuthInfoCache = clientAuthInfoCache;
-            // Accept requests coming from CLI. CLI uses master's RSA keys so add its fingerprint as accepted.
+            // Always accept requests coming from CLI. CLI uses master's RSA keys so add its fingerprint as accepted.
             _clientAuthInfoCache.Add(_rsa.Fingerprint, "!", ClientStatus.Accepted);
             _socket = new ResponseSocket();
             _socket.Connect(serverUri);
         }
 
+        /// <summary>
+        /// Listens to messages from clients, handles them and sends the response back.
+        /// </summary>
         public void Listen()
         {
             while (true)
             {
-                var messageBytes = _socket.ReceiveFrameBytes();
-                var message = _serializer.Deserialize<SecurityLayerMessage>(messageBytes);
-                switch (message.Type)
+                var securityLayerMessageBytes = _socket.ReceiveFrameBytes();
+                var securityLayerMessage = _serializer.Deserialize<SecurityLayerMessage>(securityLayerMessageBytes);
+                byte[] responseSecurityLayerMessageBytes = null;
+                switch (securityLayerMessage.Type)
                 {
                     case SecurityMessageType.ClientHello:
-                        HandleClientHello(message.Data);
+                        responseSecurityLayerMessageBytes = HandleClientHello(securityLayerMessage.Data);
                         break;
                     case SecurityMessageType.ClientKeyExchange:
-                        HandleClientKeyExchange(message.Data);
+                        responseSecurityLayerMessageBytes = HandleClientKeyExchange(securityLayerMessage.Data);
                         break;
                     case SecurityMessageType.ApplicationData:
-                        HandleApplicationData(message.Data);
+                        responseSecurityLayerMessageBytes = HandleApplicationData(securityLayerMessage.Data);
                         break;
                 }
+                Send(responseSecurityLayerMessageBytes);
             }
         }
 
-        private void Send(byte[] data)
+        /// <summary>
+        /// Handles ClientHello message from the client and responds with ServerHello message.
+        /// Sends a ServerError message on error. 
+        /// </summary>
+        /// <param name="clientHelloMessageBytes"></param>
+        /// <returns></returns>
+        private byte[] HandleClientHello(byte[] clientHelloMessageBytes)
         {
-            _socket.SendFrame(data);
-        }
-
-        private byte[] Receive()
-        {
-            return _socket.ReceiveFrameBytes();
-        }
-
-        private void HandleClientHello(byte[] message)
-        {
-            var clientHello = _serializer.Deserialize<ClientHello>(message);
+            var clientHello = _serializer.Deserialize<ClientHello>(clientHelloMessageBytes);
             var clientRsa = Rsa.CreateFromPublicPEM(clientHello.RSAPublicPem);
             Log.Debug($"Received ClientHello from {clientHello.ClientId} with RSA fingerprint {clientRsa.Fingerprint}");
             var clientAuthInfo = _clientAuthInfoCache.Get(clientRsa.Fingerprint);
@@ -84,9 +86,9 @@ namespace Ricotta.Transport
             if (clientAuthInfo.AuthenticationStatus == ClientStatus.Accepted)
             {
                 Session session = null;
-                if (clientHello.ClientId == "!")
+                if (clientHello.ClientId == CLI_CLIENT_ID)
                 {
-                    session = _sessionCache.NewCommandSession();
+                    session = _sessionCache.NewCliSession();
                 }
                 else
                 {
@@ -102,14 +104,14 @@ namespace Ricotta.Transport
                     Random = random,
                     RSAPublicPem = _rsa.PublicPem
                 };
-                var data = _serializer.Serialize<ServerHello>(serverHello);
-                var response = new SecurityLayerMessage
+                var serverHelloBytes = _serializer.Serialize<ServerHello>(serverHello);
+                var securityLayerMessage = new SecurityLayerMessage
                 {
                     Type = SecurityMessageType.ServerHello,
-                    Data = data
+                    Data = serverHelloBytes
                 };
-                var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
-                Send(responseBytes);
+                var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(securityLayerMessage);
+                return securityLayerMessageBytes;
             }
             else
             {
@@ -117,25 +119,31 @@ namespace Ricotta.Transport
                 {
                     Status = clientAuthInfo.AuthenticationStatus
                 };
-                var data = _serializer.Serialize<ServerAuthenticationStatus>(serverAuthenticationStatus);
-                var response = new SecurityLayerMessage
+                var serverAuthenticationStatusBytes = _serializer.Serialize<ServerAuthenticationStatus>(serverAuthenticationStatus);
+                var securityLayerMessage = new SecurityLayerMessage
                 {
                     Type = SecurityMessageType.ServerAuthenticationStatus,
-                    Data = data
+                    Data = serverAuthenticationStatusBytes
                 };
-                var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
-                Send(responseBytes);
+                var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(securityLayerMessage);
+                return securityLayerMessageBytes;
             }
         }
 
-        private void HandleClientKeyExchange(byte[] message)
+        /// <summary>
+        /// Handles ClientKeyExchange message from the client and responds with ServerFinished message.
+        /// Sends a ServerError message on error. 
+        /// </summary>
+        /// <param name="encryptedClientKeyExchangeBytes"></param>
+        /// <returns></returns>
+        private byte[] HandleClientKeyExchange(byte[] encryptedClientKeyExchangeBytes)
         {
-            var decryptedMessage = _rsa.Decrypt(message);
-            var clientKeyExchange = _serializer.Deserialize<ClientKeyExchange>(decryptedMessage);
+            var decryptedClientKeyExchangeBytes = _rsa.Decrypt(encryptedClientKeyExchangeBytes);
+            var clientKeyExchange = _serializer.Deserialize<ClientKeyExchange>(decryptedClientKeyExchangeBytes);
             var session = _sessionCache.Get(clientKeyExchange.SessionId);
             if (session == null)
             {
-                // TODO: Send error
+                return GetServerError("Invalid Session ID");
             }
             else
             {
@@ -152,52 +160,94 @@ namespace Ricotta.Transport
                 SessionId = session.Id,
                 PublishAesKey = _publisher.Aes.Key
             };
-            var data = _serializer.Serialize<ServerFinished>(serverFinished);
-            var response = new SecurityLayerMessage
+            var serverFinishedBytes = _serializer.Serialize<ServerFinished>(serverFinished);
+            var securityLayerMessage = new SecurityLayerMessage
             {
                 Type = SecurityMessageType.ServerFinished,
-                Data = data
+                Data = serverFinishedBytes
             };
-            var responseBytes = _serializer.Serialize<SecurityLayerMessage>(response);
-            Send(responseBytes);
+            var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(securityLayerMessage);
+            return securityLayerMessageBytes;
         }
 
-        private void HandleApplicationData(byte[] message)
+        /// <summary>
+        /// Handles ApplicationData message from the client and sends response ApplicationData message.
+        /// </summary>
+        /// <param name="applicationDataBytes"></param>
+        /// <returns></returns>
+        private byte[] HandleApplicationData(byte[] applicationDataBytes)
         {
-            var applicationData = _serializer.Deserialize<ApplicationData>(message);
+            var applicationData = _serializer.Deserialize<ApplicationData>(applicationDataBytes);
             var session = _sessionCache.Get(applicationData.SessionId);
             if (!session.IsAuthenticated)
             {
-                // TODO: Send error
+                return GetServerError("Not authenticated");
             }
             else
             {
                 var data = Aes.Decrypt(applicationData.Data, session.ClientWriteKey, applicationData.AesIv);
                 var responseData = _onApplicationDataReceivedCallback(data);
                 var aesIv = Tls12.NewAesIv();
-                var applicationDataResponse = new ApplicationData
+                var encryptedResponseData = Aes.Encrypt(responseData, session.ServerWriteKey, aesIv);
+                var responseApplicationData = new ApplicationData
                 {
                     SessionId = session.Id,
                     AesIv = aesIv,
-                    Data = Aes.Encrypt(responseData, session.ServerWriteKey, aesIv)
+                    Data = encryptedResponseData
                 };
-                var bytes = _serializer.Serialize<ApplicationData>(applicationDataResponse);
-                Send(bytes);
-            }
-            if (_sessionCache.IsCommandSession(session.Id))
-            {
-                _sessionCache.Destroy(session.Id);
+                var responseApplicationDataBytes = _serializer.Serialize<ApplicationData>(responseApplicationData);
+                if (_sessionCache.IsCliSession(session.Id))
+                {
+                    _sessionCache.Destroy(session.Id);
+                }
+                return responseApplicationDataBytes;
             }
         }
 
-        public byte[] DefaultOnApplicationDataReceivedCallback(byte[] message)
+        private byte[] DefaultOnApplicationDataReceivedCallback(byte[] message)
         {
             return new byte[] { };
         }
 
+        /// <summary>
+        /// Sets callback when application data message is received.
+        /// </summary>
+        /// <param name="onApplicationDataReceivedCallback"></param>
         public void OnApplicationDataReceived(Func<byte[], byte[]> onApplicationDataReceivedCallback)
         {
             _onApplicationDataReceivedCallback = new OnApplicationDataReceivedCallback(onApplicationDataReceivedCallback);
         }
+
+        /// <summary>
+        /// Creates a ServerError message with the error message set
+        /// </summary>
+        /// <param name="errorMessage"></param>
+        /// <returns>Returns serialized ServerError</returns>
+        private byte[] GetServerError(string errorMessage)
+        {
+            var serverError = new ServerError
+            {
+                ErrorMessage = errorMessage
+            };
+            var serverErrorBytes = _serializer.Serialize<ServerError>(serverError);
+            var securityLayerMessage = new SecurityLayerMessage
+            {
+                Type = SecurityMessageType.ServerError,
+                Data = serverErrorBytes
+            };
+            var securityLayerMessageBytes = _serializer.Serialize<SecurityLayerMessage>(securityLayerMessage);
+            return securityLayerMessageBytes;
+        }
+
+        private void Send(byte[] data)
+        {
+            _socket.SendFrame(data);
+        }
+
+        private byte[] Receive()
+        {
+            return _socket.ReceiveFrameBytes();
+        }
+
     }
 }
