@@ -159,8 +159,17 @@ namespace Ricotta.Master
 
         private ApplicationMessage HandleCommandAgentList(ApplicationMessage message)
         {
-            var commandAgentDeny = _serializer.Deserialize<CommandAgentList>(message.Data);
-            return null;
+            var commandAgentList = _serializer.Deserialize<CommandAgentList>(message.Data);
+            var masterAgentList = new MasterAgentList
+            {
+                Agents = _clientAuthInfoCache.GetList().Where(x => x.ClientId != "!").ToList()
+            };
+            var response = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterAgentList,
+                Data = _serializer.Serialize<MasterAgentList>(masterAgentList)
+            };
+            return response;
         }
 
         private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage message)

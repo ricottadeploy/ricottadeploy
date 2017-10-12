@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Ricotta.Transport
 {
@@ -30,6 +32,11 @@ namespace Ricotta.Transport
                 return _clientsById[clientId];
             }
             return null;
+        }
+
+        public List<ClientAuthInfo> GetList()
+        {
+            return _clients.Values.ToList();
         }
 
         private void SetClientStatus(string rsaFingerprint, ClientStatus clientStatus)

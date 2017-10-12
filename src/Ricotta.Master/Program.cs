@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ricotta.Logging;
 using Ricotta.Serialization;
-using Ricotta.Transport;
 using Serilog;
 
 namespace Ricotta.Master
