@@ -14,11 +14,9 @@ namespace Serilog.Sinks.RicottaMaster
         private AppClient _appClient;
         private string _agentId;
         private string _jobId;
-        private ISerializer _serializer;
 
-        public RicottaMasterSink(ISerializer serializer, AppClient appClient, string agentId, string jobId)
+        public RicottaMasterSink(AppClient appClient, string agentId, string jobId)
         {
-            _serializer = serializer;
             _appClient = appClient;
             _agentId = agentId;
             _jobId = jobId;

@@ -79,7 +79,7 @@ namespace Ricotta.Agent
             }
             else
             {
-                var logger = new LoggerConfiguration().WriteTo.RicottaMaster(_appClient, agentId, jobId, _serializer).CreateLogger();
+                var logger = new LoggerConfiguration().WriteTo.RicottaMaster(_appClient, agentId, jobId).CreateLogger();
                 constructorArgs = new object[] { logger };
             }
             var instance = Activator.CreateInstance(moduleClass, constructorArgs);

@@ -17,7 +17,6 @@ namespace Serilog
            AppClient appClient,
            string agentId,
            string jobId,
-           ISerializer serializer,
            LogEventLevel restrictedToMinimumLevel = LevelAlias.Minimum,
            IFormatProvider formatProvider = null,
            bool storeTimestampInUtc = false,
@@ -28,7 +27,7 @@ namespace Serilog
                 SelfLog.WriteLine("Logger configuration is null");
                 throw new ArgumentNullException(nameof(loggerConfiguration));
             }
-            return loggerConfiguration.Sink(new RicottaMasterSink(serializer, appClient, agentId, jobId));
+            return loggerConfiguration.Sink(new RicottaMasterSink(appClient, agentId, jobId));
         }
     }
 }
