@@ -81,16 +81,17 @@ namespace Ricotta.Agent
         {
             var moduleMethodString = $"{executeModuleMethod.Module}.{executeModuleMethod.Method}";
             Log.Debug(moduleMethodString);
-            var moduleLoaded = _moduleCache.ModuleLoaded(executeModuleMethod.Module);
+            var moduleFullName = $"Ricotta.Modules.{executeModuleMethod.Module}";
+            var moduleLoaded = _moduleCache.ModuleLoaded(moduleFullName);
             if (!moduleLoaded)
             {
-                moduleLoaded = _moduleCache.LoadModule(executeModuleMethod.Module);
+                moduleLoaded = _moduleCache.LoadModule(moduleFullName);
             }
             if (moduleLoaded)
             {
                 try
                 {
-                    _moduleCache.Invoke(executeModuleMethod.Module, executeModuleMethod.Method, executeModuleMethod.Arguments);
+                    _moduleCache.Invoke(moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
                 }
                 catch(Exception e)
                 {

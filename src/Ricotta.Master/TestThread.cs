@@ -15,7 +15,7 @@ namespace Ricotta.Master
             while (true)
             {
                 Log.Debug("Publising Test.Ping");
-                _publisher.SendExecuteModuleMethod("*", Aes.Create().IV, "Test", "Ping", new object[] { "arg1", 2 });
+                _publisher.SendExecuteModuleMethod("*", Aes.Create().IV, "Test", "Ping", new object[] { "hello from master" });
                 Thread.Sleep(10000);
             }
         }

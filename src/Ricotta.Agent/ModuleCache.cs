@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -37,8 +38,9 @@ namespace Ricotta.Agent
             {
                 var modulePackagePath = _moduleRepository.GetPackagePath(moduleName);
                 ExtractModulePackage(modulePackagePath, moduleName);
-                var moduleDllFilename = $"Ricotta.Modules.{moduleName}.dll";
-                var moduleDllFilePath = Path.Combine(_moduleCachePath, moduleName, moduleDllFilename);
+                var moduleDllFilename = $"{moduleName}.dll";
+                var modulePathInCache = Path.Combine(_moduleCachePath, moduleName);
+                var moduleDllFilePath = Directory.GetFiles(modulePathInCache, moduleDllFilename, SearchOption.AllDirectories).SingleOrDefault();
                 var moduleAssembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(moduleDllFilePath);
                 _assemblies.Add(moduleName, moduleAssembly);
                 return true;
@@ -63,7 +65,7 @@ namespace Ricotta.Agent
 
         private void Invoke(Assembly assembly, string moduleName, string methodName, object[] arguments)
         {
-            var moduleClass = assembly.GetType($"Ricotta.Modules.{moduleName}");
+            var moduleClass = assembly.GetType(moduleName);
             object[] constructorArgs = null;
             if (moduleName == "Package")
             {
@@ -80,9 +82,9 @@ namespace Ricotta.Agent
 
         private void ExtractModulePackage(string packagePath, string moduleName)
         {
-            var modulePath = Path.Combine(_moduleCachePath, moduleName);
-            Directory.CreateDirectory(modulePath);
-            ZipFile.ExtractToDirectory(packagePath, modulePath);
+            var modulePathInCache = Path.Combine(_moduleCachePath, moduleName);
+            Directory.CreateDirectory(modulePathInCache);
+            ZipFile.ExtractToDirectory(packagePath, modulePathInCache, true);
         }
     }
 }

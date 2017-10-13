@@ -146,7 +146,8 @@ namespace Ricotta.Master
         private ApplicationMessage HandleAgentModuleInfo(ApplicationMessage applicationMessage)
         {
             var agentModuleInfo = _serializer.Deserialize<AgentModuleInfo>(applicationMessage.Data);
-            var modulePath = Path.Combine(_fileRepository.Path, agentModuleInfo.ModuleName);
+            var moduleRepositoryPath = Path.Combine(_fileRepository.Path, "modules");
+            var modulePath = Path.Combine(moduleRepositoryPath, agentModuleInfo.ModuleName);
             var latestVersionPackagePath = NuGetPackageVersion.GetLatestVersionPackagePath(modulePath);
             if (latestVersionPackagePath == null)
             {
@@ -155,7 +156,7 @@ namespace Ricotta.Master
 
             var masterModuleInfo = new MasterModuleInfo
             {
-                FileUri = latestVersionPackagePath  // TODO:
+                FileUri = latestVersionPackagePath.Replace(_fileRepository.Path, "").Substring(1)
             };
             var masterModuleInfoBytes = _serializer.Serialize<MasterModuleInfo>(masterModuleInfo);
             var responseApplicationMessage = new ApplicationMessage
