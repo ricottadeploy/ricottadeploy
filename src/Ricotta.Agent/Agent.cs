@@ -17,6 +17,7 @@ namespace Ricotta.Agent
         private readonly ISerializer _serializer;
         private readonly Rsa _rsa;
         private Client _client;
+        private ModuleCache _moduleCache;
 
         public Agent(IConfigurationRoot config,
                         ISerializer serializer)
@@ -58,6 +59,10 @@ namespace Ricotta.Agent
                 Log.Error("Maximum authentication attempts made with no success. Exiting.");
                 Environment.Exit(0);
             }
+            var moduleRepositoryPath = Path.Combine(_config["filerepository_path"], "modules");
+            var moduleRepository = new ModuleRepository(moduleRepositoryPath, _client);
+            var moduleCachePath = Path.Combine(_config["work_path"], "modules");
+            _moduleCache = new ModuleCache(moduleCachePath, moduleRepository);
             Listen();
         }
 

@@ -9,7 +9,7 @@ namespace Ricotta.Agent
     {
         public ModuleRepository(string repositoryPath, Client client)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public string GetModuleLocalPath(string moduleName)
