@@ -22,52 +22,52 @@ namespace Ricotta.Agent
             _assemblies = new Dictionary<string, Assembly>();
         }
 
-        public bool ModuleLoaded(string moduleName)
+        public bool ModuleLoaded(string fullModuleName)
         {
-            return _assemblies.ContainsKey(moduleName);
+            return _assemblies.ContainsKey(fullModuleName);
         }
 
-        public bool LoadModule(string moduleName)
+        public bool LoadModule(string fullModuleName)
         {
-            var exists = _moduleRepository.ExistsLocally(moduleName);
+            var exists = _moduleRepository.ExistsLocally(fullModuleName);
             if (!exists)
             {
-                exists = _moduleRepository.Download(moduleName);
+                exists = _moduleRepository.Download(fullModuleName);
             }
             if (exists)
             {
-                var modulePackagePath = _moduleRepository.GetPackagePath(moduleName);
-                ExtractModulePackage(modulePackagePath, moduleName);
-                var moduleDllFilename = $"{moduleName}.dll";
-                var modulePathInCache = Path.Combine(_moduleCachePath, moduleName);
+                var modulePackagePath = _moduleRepository.GetPackagePath(fullModuleName);
+                ExtractModulePackage(modulePackagePath, fullModuleName);
+                var moduleDllFilename = $"{fullModuleName}.dll";
+                var modulePathInCache = Path.Combine(_moduleCachePath, fullModuleName);
                 var moduleDllFilePath = Directory.GetFiles(modulePathInCache, moduleDllFilename, SearchOption.AllDirectories).SingleOrDefault();
                 var moduleAssembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(moduleDllFilePath);
-                _assemblies.Add(moduleName, moduleAssembly);
+                _assemblies.Add(fullModuleName, moduleAssembly);
                 return true;
             }
             return false;
         }
 
-        public void Invoke(string moduleName, string methodName, object[] arguments)
+        public void Invoke(string fullModuleName, string methodName, object[] arguments)
         {
-            var exists = ModuleLoaded(moduleName);
+            var exists = ModuleLoaded(fullModuleName);
             if (!exists)
             {
-                exists = LoadModule(moduleName);
+                exists = LoadModule(fullModuleName);
             }
             if (!exists)
             {
-                throw new Exception($"Module {moduleName} does not exist");
+                throw new Exception($"Module {fullModuleName} does not exist");
             }
-            var assembly = _assemblies[moduleName];
-            Invoke(assembly, moduleName, methodName, arguments);
+            var assembly = _assemblies[fullModuleName];
+            Invoke(assembly, fullModuleName, methodName, arguments);
         }
 
-        private void Invoke(Assembly assembly, string moduleName, string methodName, object[] arguments)
+        private void Invoke(Assembly assembly, string fullModuleName, string methodName, object[] arguments)
         {
-            var moduleClass = assembly.GetType(moduleName);
+            var moduleClass = assembly.GetType(fullModuleName);
             object[] constructorArgs = null;
-            if (moduleName == "Package")
+            if (fullModuleName == "Package")
             {
                 constructorArgs = new object[] { Log.Logger, null };    // TODO: Logger and FileRepository
             }
