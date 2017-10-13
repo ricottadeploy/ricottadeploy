@@ -7,6 +7,8 @@ using Ricotta.Serialization;
 using Ricotta.Transport;
 using Serilog;
 using Ricotta.Transport.Messages.Publish;
+using Ricotta.Transport.Messages.Application;
+using Newtonsoft.Json;
 
 namespace Ricotta.Agent
 {
@@ -59,7 +61,7 @@ namespace Ricotta.Agent
                 Log.Error("Maximum authentication attempts made with no success. Exiting.");
                 Environment.Exit(0);
             }
-            var fileRepositoryPath = _config["filerepository_path"]; 
+            var fileRepositoryPath = _config["filerepository_path"];
             var fileRepository = new FileRepository(fileRepositoryPath, _serializer, _client);
             var moduleRepositoryPath = Path.Combine(fileRepositoryPath, "modules");
             var moduleRepository = new NuGetRepository(moduleRepositoryPath, _serializer, _client, fileRepository);
@@ -91,11 +93,45 @@ namespace Ricotta.Agent
             {
                 try
                 {
-                    _moduleCache.Invoke(moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
+                    var result = _moduleCache.Invoke(moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
+                    var agentJobResult = new AgentJobResult
+                    {
+                        AgentId = _agentId,
+                        JobId = executeModuleMethod.JobId,
+                        ErrorCode = 0,
+                        ErrorMessage = null,
+                        ResultData = JsonConvert.SerializeObject(result)
+                    };
+                    var agentJobResultBytes = _serializer.Serialize<AgentJobResult>(agentJobResult);
+                    var applicationMessage = new ApplicationMessage
+                    {
+                        Type = ApplicationMessageType.AgentJobResult,
+                        Data = agentJobResultBytes
+                    };
+                    var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
+                    _client.SendApplicationData(applicationMessageBytes);
+                    _client.ReceiveApplicationData();   // Ignore received message
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Log.Error($"Error while executing {moduleMethodString}: {e.StackTrace}");
+                    var agentJobResult = new AgentJobResult
+                    {
+                        AgentId = _agentId,
+                        JobId = executeModuleMethod.JobId,
+                        ErrorCode = 1,
+                        ErrorMessage = e.StackTrace,
+                        ResultData = null
+                    };
+                    var agentJobResultBytes = _serializer.Serialize<AgentJobResult>(agentJobResult);
+                    var applicationMessage = new ApplicationMessage
+                    {
+                        Type = ApplicationMessageType.AgentJobResult,
+                        Data = agentJobResultBytes
+                    };
+                    var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
+                    _client.SendApplicationData(applicationMessageBytes);
+                    _client.ReceiveApplicationData();   // Ignore recevied message
                 }
             }
             else

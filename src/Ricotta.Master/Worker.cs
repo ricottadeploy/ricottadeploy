@@ -65,11 +65,11 @@ namespace Ricotta.Master
                 case ApplicationMessageType.AgentModuleInfo:
                     response = HandleAgentModuleInfo(applicationMessage);
                     break;
-                case ApplicationMessageType.AgentLog:
+                case ApplicationMessageType.AgentJobLog:
                     // TODO
                     break;
-                case ApplicationMessageType.AgentJobStatus:
-                    // TODO
+                case ApplicationMessageType.AgentJobResult:
+                    response = HandleAgentJobResult(applicationMessage);
                     break;
                 case ApplicationMessageType.CommandAgentList:
                     response = HandleCommandAgentList(applicationMessage);
@@ -163,6 +163,33 @@ namespace Ricotta.Master
             {
                 Type = ApplicationMessageType.MasterModuleInfo,
                 Data = masterModuleInfoBytes
+            };
+            return responseApplicationMessage;
+        }
+
+        private ApplicationMessage HandleAgentJobResult(ApplicationMessage applicationMessage)
+        {
+            var agentJobResult = _serializer.Deserialize<AgentJobResult>(applicationMessage.Data);
+            var result = "Success";
+            if (agentJobResult.ErrorCode != 0)
+            {
+                result = "Failed";
+            }
+            Log.Information($"{agentJobResult.AgentId} : Job ID {agentJobResult.JobId} : {result}");
+            if (agentJobResult.ErrorCode != 0)
+            {
+                Log.Error($"{agentJobResult.AgentId} : Job ID {agentJobResult.JobId} : Error : {agentJobResult.ErrorMessage}");
+            }
+            if (agentJobResult.ResultData != null)
+            {
+                Log.Information($"{agentJobResult.AgentId} : Job ID {agentJobResult.JobId} : Result : {agentJobResult.ResultData}");
+            }
+            var masterJobResult = new MasterJobResult { };
+            var masterJobResultBytes = _serializer.Serialize<MasterJobResult>(masterJobResult);
+            var responseApplicationMessage = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterJobResult,
+                Data = masterJobResultBytes
             };
             return responseApplicationMessage;
         }

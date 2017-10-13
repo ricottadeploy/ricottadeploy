@@ -48,7 +48,7 @@ namespace Ricotta.Agent
             return false;
         }
 
-        public void Invoke(string fullModuleName, string methodName, object[] arguments)
+        public object Invoke(string fullModuleName, string methodName, object[] arguments)
         {
             var exists = ModuleLoaded(fullModuleName);
             if (!exists)
@@ -60,10 +60,10 @@ namespace Ricotta.Agent
                 throw new Exception($"Module {fullModuleName} does not exist");
             }
             var assembly = _assemblies[fullModuleName];
-            Invoke(assembly, fullModuleName, methodName, arguments);
+            return Invoke(assembly, fullModuleName, methodName, arguments);
         }
 
-        private void Invoke(Assembly assembly, string fullModuleName, string methodName, object[] arguments)
+        private object Invoke(Assembly assembly, string fullModuleName, string methodName, object[] arguments)
         {
             var moduleClass = assembly.GetType(fullModuleName);
             object[] constructorArgs = null;
@@ -77,7 +77,7 @@ namespace Ricotta.Agent
             }
             var instance = Activator.CreateInstance(moduleClass, constructorArgs);
             var method = moduleClass.GetMethod(methodName);
-            method.Invoke(instance, arguments);
+            return method.Invoke(instance, arguments);
         }
 
         private void ExtractModulePackage(string packagePath, string moduleName)

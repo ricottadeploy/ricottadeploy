@@ -32,12 +32,14 @@ namespace Ricotta.Transport
 
         public void SendExecuteModuleMethod(string selector,
                                             byte[] aesIv,
+                                            string jobId,
                                             string module,
                                             string method,
                                             object[] arguments)
         {
             var executeModuleMethod = new ExecuteModuleMethod
             {
+                JobId = jobId,
                 Module = module,
                 Method = method,
                 Arguments = arguments
