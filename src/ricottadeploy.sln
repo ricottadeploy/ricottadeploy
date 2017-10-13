@@ -10,7 +10,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ricotta.Master", "Ricotta.M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ricotta.Master.Cli", "Ricotta.Master.Cli\Ricotta.Master.Cli.csproj", "{F93D9E03-3A11-4FC6-B023-0841987AEF34}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Versioning", "NuGet.Versioning\NuGet.Versioning.csproj", "{B5DDE9AF-CFD5-4D6C-88EA-DBC1A611041F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NuGet.Versioning", "NuGet.Versioning\NuGet.Versioning.csproj", "{B5DDE9AF-CFD5-4D6C-88EA-DBC1A611041F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serilog.Sinks.RicottaMaster", "Serilog.Sinks.RicottaMaster\Serilog.Sinks.RicottaMaster.csproj", "{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -82,6 +84,18 @@ Global
 		{B5DDE9AF-CFD5-4D6C-88EA-DBC1A611041F}.Release|x64.Build.0 = Release|Any CPU
 		{B5DDE9AF-CFD5-4D6C-88EA-DBC1A611041F}.Release|x86.ActiveCfg = Release|Any CPU
 		{B5DDE9AF-CFD5-4D6C-88EA-DBC1A611041F}.Release|x86.Build.0 = Release|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Debug|x64.Build.0 = Debug|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Debug|x86.Build.0 = Debug|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Release|x64.ActiveCfg = Release|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Release|x64.Build.0 = Release|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Release|x86.ActiveCfg = Release|Any CPU
+		{1A9B1595-6ADE-4CB6-9EFC-B5C0FA507AA5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -66,7 +66,7 @@ namespace Ricotta.Agent
             var moduleRepositoryPath = Path.Combine(fileRepositoryPath, "modules");
             var moduleRepository = new NuGetRepository(moduleRepositoryPath, _serializer, _client, fileRepository);
             var moduleCachePath = Path.Combine(_config["work_path"], "modules");
-            _moduleCache = new ModuleCache(moduleCachePath, moduleRepository);
+            _moduleCache = new ModuleCache(moduleCachePath, _serializer, _client, moduleRepository);
             Listen();
         }
 
@@ -93,7 +93,7 @@ namespace Ricotta.Agent
             {
                 try
                 {
-                    var result = _moduleCache.Invoke(moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
+                    var result = _moduleCache.Invoke(_agentId, executeModuleMethod.JobId, moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
                     var agentJobResult = new AgentJobResult
                     {
                         AgentId = _agentId,

@@ -1,4 +1,6 @@
-﻿using Serilog;
+﻿using Ricotta.Serialization;
+using Ricotta.Transport;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,10 +16,14 @@ namespace Ricotta.Agent
         private string _moduleCachePath;
         private NuGetRepository _moduleRepository;
         private Dictionary<string, Assembly> _assemblies;   // <ModuleName, Assembly>
+        private Client _client;
+        private ISerializer _serializer;
 
-        public ModuleCache(string moduleCachePath, NuGetRepository moduleRepository)
+        public ModuleCache(string moduleCachePath, ISerializer serializer, Client client, NuGetRepository moduleRepository)
         {
             _moduleCachePath = moduleCachePath;
+            _serializer = serializer;
+            _client = client;
             _moduleRepository = moduleRepository;
             _assemblies = new Dictionary<string, Assembly>();
         }
@@ -48,7 +54,7 @@ namespace Ricotta.Agent
             return false;
         }
 
-        public object Invoke(string fullModuleName, string methodName, object[] arguments)
+        public object Invoke(string agentId, string jobId, string fullModuleName, string methodName, object[] arguments)
         {
             var exists = ModuleLoaded(fullModuleName);
             if (!exists)
@@ -60,10 +66,10 @@ namespace Ricotta.Agent
                 throw new Exception($"Module {fullModuleName} does not exist");
             }
             var assembly = _assemblies[fullModuleName];
-            return Invoke(assembly, fullModuleName, methodName, arguments);
+            return Invoke(agentId, jobId, assembly, fullModuleName, methodName, arguments);
         }
 
-        private object Invoke(Assembly assembly, string fullModuleName, string methodName, object[] arguments)
+        private object Invoke(string agentId, string jobId, Assembly assembly, string fullModuleName, string methodName, object[] arguments)
         {
             var moduleClass = assembly.GetType(fullModuleName);
             object[] constructorArgs = null;
@@ -73,7 +79,8 @@ namespace Ricotta.Agent
             }
             else
             {
-                constructorArgs = new object[] { Log.Logger };
+                var logger = new LoggerConfiguration().WriteTo.RicottaMaster(_client, agentId, jobId, _serializer).CreateLogger();
+                constructorArgs = new object[] { logger };
             }
             var instance = Activator.CreateInstance(moduleClass, constructorArgs);
             var method = moduleClass.GetMethod(methodName);

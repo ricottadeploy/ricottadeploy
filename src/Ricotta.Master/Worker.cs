@@ -66,7 +66,7 @@ namespace Ricotta.Master
                     response = HandleAgentModuleInfo(applicationMessage);
                     break;
                 case ApplicationMessageType.AgentJobLog:
-                    // TODO
+                    response = HandleAgentJobLog(applicationMessage);
                     break;
                 case ApplicationMessageType.AgentJobResult:
                     response = HandleAgentJobResult(applicationMessage);
@@ -163,6 +163,20 @@ namespace Ricotta.Master
             {
                 Type = ApplicationMessageType.MasterModuleInfo,
                 Data = masterModuleInfoBytes
+            };
+            return responseApplicationMessage;
+        }
+
+        private ApplicationMessage HandleAgentJobLog(ApplicationMessage applicationMessage)
+        {
+            var agentJobLog = _serializer.Deserialize<AgentJobLog>(applicationMessage.Data);
+            Log.Information(agentJobLog.Message);
+            var masterJobLog = new MasterJobLog { };
+            var masterJobLogBytes = _serializer.Serialize<MasterJobLog>(masterJobLog);
+            var responseApplicationMessage = new ApplicationMessage
+            {
+                Type = ApplicationMessageType.MasterJobLog,
+                Data = masterJobLogBytes
             };
             return responseApplicationMessage;
         }
