@@ -14,44 +14,28 @@ namespace Ricotta.Agent
     {
         private string _respositoryPath;
         private ISerializer _serializer;
-        private Client _client;
+        private AppClient _appClient;
 
-        public FileRepository(string repositoryPath, ISerializer serializer, Client client)
+        public FileRepository(string repositoryPath, ISerializer serializer, AppClient appClient)
         {
             _respositoryPath = repositoryPath;
             _serializer = serializer;
-            _client = client;
+            _appClient = appClient;
         }
 
         public bool Download(string fileUri)
         {
-            var agentFileInfo = new AgentFileInfo
+            _appClient.SendAgentFileInfo(fileUri);
+            try
             {
-                FileUri = fileUri
-            };
-            var agentFileInfoBytes = _serializer.Serialize<AgentFileInfo>(agentFileInfo);
-            var applicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.AgentFileInfo,
-                Data = agentFileInfoBytes
-            };
-            var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
-            _client.SendApplicationData(applicationMessageBytes);
-
-            var receivedApplicationMessageBytes = _client.ReceiveApplicationData();
-            var receivedApplicationMessage = _serializer.Deserialize<ApplicationMessage>(receivedApplicationMessageBytes);
-            if (receivedApplicationMessage.Type == ApplicationMessageType.MasterError)
-            {
-                var masterError = _serializer.Deserialize<MasterError>(receivedApplicationMessage.Data);
-                Log.Error($"Error while downloading {fileUri}: {masterError.ErrorMessage}");
-                return false;
-            }
-            else if (receivedApplicationMessage.Type == ApplicationMessageType.MasterFileInfo)
-            {
-                var masterFileInfo = _serializer.Deserialize<MasterFileInfo>(receivedApplicationMessage.Data);
+                var masterFileInfo = _appClient.ReceiveMasterFileInfo();
                 return Download(fileUri, masterFileInfo);
             }
-            return false;
+            catch (Exception e)
+            {
+                Log.Error($"Error while downloading {fileUri}: {e.Message}");
+                return false;
+            }
         }
 
         private bool Download(string fileUri, MasterFileInfo masterFileInfo)
@@ -102,36 +86,19 @@ namespace Ricotta.Agent
 
         private bool DownloadFileChunk(string fileUri, int offset, int size, FileStream file)
         {
-            var agentFileChunk = new AgentFileChunk
+            _appClient.SendAgentFileChunk(fileUri, offset, size);
+            try
             {
-                FileUri = fileUri,
-                Offset = offset,
-                Size = size
-            };
-            var agentFileChunkBytes = _serializer.Serialize<AgentFileChunk>(agentFileChunk);
-            var applicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.AgentFileChunk,
-                Data = agentFileChunkBytes
-            };
-            var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
-            _client.SendApplicationData(applicationMessageBytes);
+                var masterFileChunk = _appClient.ReceiveMasterFileChunk();
 
-            var receivedApplicationMessageBytes = _client.ReceiveApplicationData();
-            var receivedApplicationMessage = _serializer.Deserialize<ApplicationMessage>(receivedApplicationMessageBytes);
-            if (receivedApplicationMessage.Type == ApplicationMessageType.MasterError)
-            {
-                var masterError = _serializer.Deserialize<MasterError>(receivedApplicationMessage.Data);
-                Log.Error($"Error while downloading {fileUri}: {masterError.ErrorMessage}");
-                return false;
-            }
-            else if (receivedApplicationMessage.Type == ApplicationMessageType.MasterFileChunk)
-            {
-                var masterFileChunk = _serializer.Deserialize<MasterFileChunk>(receivedApplicationMessage.Data);
                 file.Write(masterFileChunk.Data, 0, masterFileChunk.Data.Length);
                 return true;
             }
-            return false;
+            catch (Exception e)
+            {
+                Log.Error($"Error while downloading {fileUri}: {e.Message}");
+                return false;
+            }
         }
     }
 }

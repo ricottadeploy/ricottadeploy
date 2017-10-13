@@ -14,14 +14,14 @@ namespace Ricotta.Agent
     {
         private string _respositoryPath;
         private ISerializer _serializer;
-        private Client _client;
+        private AppClient _appClient;
         private FileRepository _fileRepository;
 
-        public NuGetRepository(string repositoryPath, ISerializer serializer, Client client, FileRepository fileRepository)
+        public NuGetRepository(string repositoryPath, ISerializer serializer, AppClient appClient, FileRepository fileRepository)
         {
             _respositoryPath = repositoryPath;
             _serializer = serializer;
-            _client = client;
+            _appClient = appClient;
             _fileRepository = fileRepository;
         }
 
@@ -42,34 +42,18 @@ namespace Ricotta.Agent
 
         public bool Download(string packageName)
         {
-            var agentModuleInfo = new AgentModuleInfo
+            _appClient.SendAgentModuleInfo(packageName);
+            try
             {
-                ModuleName = packageName
-            };
-            var agentModuleInfoBytes = _serializer.Serialize<AgentModuleInfo>(agentModuleInfo);
-            var applicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.AgentModuleInfo,
-                Data = agentModuleInfoBytes
-            };
-            var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
-            _client.SendApplicationData(applicationMessageBytes);
-
-            var receivedApplicationMessageBytes = _client.ReceiveApplicationData();
-            var receivedApplicationMessage = _serializer.Deserialize<ApplicationMessage>(receivedApplicationMessageBytes);
-            if (receivedApplicationMessage.Type == ApplicationMessageType.MasterError)
-            {
-                var masterError = _serializer.Deserialize<MasterError>(receivedApplicationMessage.Data);
-                Log.Error($"Error while downloading module {packageName}: {masterError.ErrorMessage}");
-                return false;
-            }
-            else if (receivedApplicationMessage.Type == ApplicationMessageType.MasterModuleInfo)
-            {
-                var masterModuleInfo = _serializer.Deserialize<MasterModuleInfo>(receivedApplicationMessage.Data);
+                var masterModuleInfo = _appClient.ReceiveMasterModuleInfo();
                 var success = _fileRepository.Download(masterModuleInfo.FileUri);
                 return success;
             }
-            return false;
+            catch (Exception e)
+            {
+                Log.Error($"Error while downloading module {packageName}: {e.Message}");
+                return false;
+            }
         }
     }
 }

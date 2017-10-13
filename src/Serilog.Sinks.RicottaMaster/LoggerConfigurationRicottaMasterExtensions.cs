@@ -14,7 +14,7 @@ namespace Serilog
     {
         public static LoggerConfiguration RicottaMaster(
            this LoggerSinkConfiguration loggerConfiguration,
-           Client client,
+           AppClient appClient,
            string agentId,
            string jobId,
            ISerializer serializer,
@@ -28,7 +28,7 @@ namespace Serilog
                 SelfLog.WriteLine("Logger configuration is null");
                 throw new ArgumentNullException(nameof(loggerConfiguration));
             }
-            return loggerConfiguration.Sink(new RicottaMasterSink(serializer, client, agentId, jobId));
+            return loggerConfiguration.Sink(new RicottaMasterSink(serializer, appClient, agentId, jobId));
         }
     }
 }

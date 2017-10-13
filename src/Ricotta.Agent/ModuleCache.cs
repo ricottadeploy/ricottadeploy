@@ -16,14 +16,14 @@ namespace Ricotta.Agent
         private string _moduleCachePath;
         private NuGetRepository _moduleRepository;
         private Dictionary<string, Assembly> _assemblies;   // <ModuleName, Assembly>
-        private Client _client;
+        private AppClient _appClient;
         private ISerializer _serializer;
 
-        public ModuleCache(string moduleCachePath, ISerializer serializer, Client client, NuGetRepository moduleRepository)
+        public ModuleCache(string moduleCachePath, ISerializer serializer, AppClient appClient, NuGetRepository moduleRepository)
         {
             _moduleCachePath = moduleCachePath;
             _serializer = serializer;
-            _client = client;
+            _appClient = appClient;
             _moduleRepository = moduleRepository;
             _assemblies = new Dictionary<string, Assembly>();
         }
@@ -79,7 +79,7 @@ namespace Ricotta.Agent
             }
             else
             {
-                var logger = new LoggerConfiguration().WriteTo.RicottaMaster(_client, agentId, jobId, _serializer).CreateLogger();
+                var logger = new LoggerConfiguration().WriteTo.RicottaMaster(_appClient, agentId, jobId, _serializer).CreateLogger();
                 constructorArgs = new object[] { logger };
             }
             var instance = Activator.CreateInstance(moduleClass, constructorArgs);

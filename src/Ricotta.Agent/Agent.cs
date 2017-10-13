@@ -18,7 +18,7 @@ namespace Ricotta.Agent
         private readonly IConfigurationRoot _config;
         private readonly ISerializer _serializer;
         private readonly Rsa _rsa;
-        private Client _client;
+        private AppClient _appClient;
         private ModuleCache _moduleCache;
 
         public Agent(IConfigurationRoot config,
@@ -38,12 +38,12 @@ namespace Ricotta.Agent
             var maxAttempts = int.Parse(_config["authentication:max_attempts"]);
             var timeoutMs = 2000;
             _agentId = _config["id"];
-            _client = new Client(_agentId, _serializer, _rsa, reqServerUrl);
+            _appClient = new AppClient(_serializer, _rsa, _agentId, reqServerUrl);
             int attempt = 0;
             for (attempt = 0; attempt < maxAttempts; attempt++)
             {
                 Log.Debug($"Authentication attempt {attempt + 1} of {maxAttempts} with master at {reqServerUrl}");
-                var status = _client.TryAuthenticating(timeoutMs);
+                var status = _appClient.TryAuthenticating(timeoutMs);
                 if (status == ClientStatus.Denied)
                 {
                     Log.Error("Master denied authentication. Exiting.");
@@ -62,18 +62,18 @@ namespace Ricotta.Agent
                 Environment.Exit(0);
             }
             var fileRepositoryPath = _config["filerepository_path"];
-            var fileRepository = new FileRepository(fileRepositoryPath, _serializer, _client);
+            var fileRepository = new FileRepository(fileRepositoryPath, _serializer, _appClient);
             var moduleRepositoryPath = Path.Combine(fileRepositoryPath, "modules");
-            var moduleRepository = new NuGetRepository(moduleRepositoryPath, _serializer, _client, fileRepository);
+            var moduleRepository = new NuGetRepository(moduleRepositoryPath, _serializer, _appClient, fileRepository);
             var moduleCachePath = Path.Combine(_config["work_path"], "modules");
-            _moduleCache = new ModuleCache(moduleCachePath, _serializer, _client, moduleRepository);
+            _moduleCache = new ModuleCache(moduleCachePath, _serializer, _appClient, moduleRepository);
             Listen();
         }
 
         private void Listen()
         {
             var publishUrl = _config["master:publish_url"];
-            var subscriber = new Subscriber(_serializer, _client.Session.PublishKey, _agentId, publishUrl);
+            var subscriber = new Subscriber(_serializer, _appClient.GetMasterPublishKey(), _agentId, publishUrl);
             subscriber.SetExecuteModuleMethodHandler(HandleExecuteModuleMethod);
             Log.Debug($"Subscribing to master at {publishUrl}");
             subscriber.Listen();
@@ -91,48 +91,20 @@ namespace Ricotta.Agent
             }
             if (moduleLoaded)
             {
+                object result = null;
                 try
                 {
-                    var result = _moduleCache.Invoke(_agentId, executeModuleMethod.JobId, moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
-                    var agentJobResult = new AgentJobResult
-                    {
-                        AgentId = _agentId,
-                        JobId = executeModuleMethod.JobId,
-                        ErrorCode = 0,
-                        ErrorMessage = null,
-                        ResultData = JsonConvert.SerializeObject(result)
-                    };
-                    var agentJobResultBytes = _serializer.Serialize<AgentJobResult>(agentJobResult);
-                    var applicationMessage = new ApplicationMessage
-                    {
-                        Type = ApplicationMessageType.AgentJobResult,
-                        Data = agentJobResultBytes
-                    };
-                    var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
-                    _client.SendApplicationData(applicationMessageBytes);
-                    _client.ReceiveApplicationData();   // Ignore received message
+                    result = _moduleCache.Invoke(_agentId, executeModuleMethod.JobId, moduleFullName, executeModuleMethod.Method, executeModuleMethod.Arguments);
                 }
                 catch (Exception e)
                 {
                     Log.Error($"Error while executing {moduleMethodString}: {e.StackTrace}");
-                    var agentJobResult = new AgentJobResult
-                    {
-                        AgentId = _agentId,
-                        JobId = executeModuleMethod.JobId,
-                        ErrorCode = 1,
-                        ErrorMessage = e.StackTrace,
-                        ResultData = null
-                    };
-                    var agentJobResultBytes = _serializer.Serialize<AgentJobResult>(agentJobResult);
-                    var applicationMessage = new ApplicationMessage
-                    {
-                        Type = ApplicationMessageType.AgentJobResult,
-                        Data = agentJobResultBytes
-                    };
-                    var applicationMessageBytes = _serializer.Serialize<ApplicationMessage>(applicationMessage);
-                    _client.SendApplicationData(applicationMessageBytes);
-                    _client.ReceiveApplicationData();   // Ignore recevied message
+                    _appClient.SendAgentJobResult(_agentId, executeModuleMethod.JobId, 1, e.StackTrace, null);
+                    _appClient.ReceiveMasterJobResult();   // Ignore received message
+                    return;
                 }
+                _appClient.SendAgentJobResult(_agentId, executeModuleMethod.JobId, 0, null, JsonConvert.SerializeObject(result));
+                _appClient.ReceiveMasterJobResult();    // Ignore received message
             }
             else
             {
