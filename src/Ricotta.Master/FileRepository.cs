@@ -1,3 +1,4 @@
+using Common.Cryptography;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -8,6 +9,14 @@ namespace Ricotta.Master
     {
         private readonly string _path;
 
+        public string Path
+        {
+            get
+            {
+                return _path;
+            }
+        }
+
         public FileRepository(string path)
         {
             _path = path;
@@ -15,7 +24,7 @@ namespace Ricotta.Master
 
         private string GetServerFilePath(string fileUri)
         {
-            var filePath = Path.Combine(_path, fileUri);
+            var filePath = System.IO.Path.Combine(_path, fileUri);
             return filePath;
         }
 
@@ -39,20 +48,7 @@ namespace Ricotta.Master
                 throw new FileNotFoundException(fileUri);
             }
 
-            using (var fs = new FileStream(filePath, FileMode.Open))
-            {
-                using (var sha256 = SHA256.Create())
-                {
-                    sha256.ComputeHash(fs);
-                    byte[] hash = sha256.ComputeHash(fs);
-                    StringBuilder formatted = new StringBuilder(2 * hash.Length);
-                    foreach (byte b in hash)
-                    {
-                        formatted.AppendFormat("{0:x2}", b);
-                    }
-                    return formatted.ToString();
-                }
-            }
+            return Sha256.CalculateFileHash(filePath);
         }
 
         public byte[] GetFileChunk(string fileUri, int offset, int length)

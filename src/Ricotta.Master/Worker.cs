@@ -6,6 +6,7 @@ using Ricotta.Serialization;
 using Ricotta.Transport;
 using Ricotta.Transport.Messages.Application;
 using Serilog;
+using NuGet.Versioning;
 
 namespace Ricotta.Master
 {
@@ -145,9 +146,16 @@ namespace Ricotta.Master
         private ApplicationMessage HandleAgentModuleInfo(ApplicationMessage applicationMessage)
         {
             var agentModuleInfo = _serializer.Deserialize<AgentModuleInfo>(applicationMessage.Data);
+            var modulePath = Path.Combine(_fileRepository.Path, agentModuleInfo.ModuleName);
+            var latestVersionPackagePath = NuGetPackageVersion.GetLatestVersionPackagePath(modulePath);
+            if (latestVersionPackagePath == null)
+            {
+                return GetMasterError($"Module does not exist");
+            }
+
             var masterModuleInfo = new MasterModuleInfo
             {
-                FileUri = null
+                FileUri = latestVersionPackagePath  // TODO:
             };
             var masterModuleInfoBytes = _serializer.Serialize<MasterModuleInfo>(masterModuleInfo);
             var responseApplicationMessage = new ApplicationMessage
@@ -196,7 +204,7 @@ namespace Ricotta.Master
 
         private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage applicationMessage)
         {
-            var commandAgentDeny  = _serializer.Deserialize<CommandAgentDeny>(applicationMessage.Data);
+            var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(applicationMessage.Data);
             var deniedIds = new List<string>();
             _clientAuthInfoCache.DenyById(commandAgentDeny.Selector);
             deniedIds.Add(commandAgentDeny.Selector);

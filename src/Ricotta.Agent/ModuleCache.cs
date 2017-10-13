@@ -2,19 +2,19 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Text;
 
 namespace Ricotta.Agent
 {
     public class ModuleCache
     {
         private string _moduleCachePath;
-        private ModuleRepository _moduleRepository;
+        private NuGetRepository _moduleRepository;
         private Dictionary<string, Assembly> _assemblies;   // <ModuleName, Assembly>
 
-        public ModuleCache(string moduleCachePath, ModuleRepository moduleRepository)
+        public ModuleCache(string moduleCachePath, NuGetRepository moduleRepository)
         {
             _moduleCachePath = moduleCachePath;
             _moduleRepository = moduleRepository;
@@ -35,8 +35,8 @@ namespace Ricotta.Agent
             }
             if (exists)
             {
-                var modulePackagePath = _moduleRepository.GetModuleLocalPath(moduleName);
-                ExtractModulePackage(modulePackagePath);
+                var modulePackagePath = _moduleRepository.GetPackagePath(moduleName);
+                ExtractModulePackage(modulePackagePath, moduleName);
                 var moduleDllFilename = $"Ricotta.Modules.{moduleName}.dll";
                 var moduleDllFilePath = Path.Combine(_moduleCachePath, moduleName, moduleDllFilename);
                 var moduleAssembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(moduleDllFilePath);
@@ -78,9 +78,11 @@ namespace Ricotta.Agent
             method.Invoke(instance, arguments);
         }
 
-        private void ExtractModulePackage(string packagePath)
+        private void ExtractModulePackage(string packagePath, string moduleName)
         {
-            throw new NotImplementedException();
+            var modulePath = Path.Combine(_moduleCachePath, moduleName);
+            Directory.CreateDirectory(modulePath);
+            ZipFile.ExtractToDirectory(packagePath, modulePath);
         }
     }
 }

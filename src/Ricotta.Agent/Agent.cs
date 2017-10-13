@@ -59,8 +59,10 @@ namespace Ricotta.Agent
                 Log.Error("Maximum authentication attempts made with no success. Exiting.");
                 Environment.Exit(0);
             }
-            var moduleRepositoryPath = Path.Combine(_config["filerepository_path"], "modules");
-            var moduleRepository = new ModuleRepository(moduleRepositoryPath, _client);
+            var fileRepositoryPath = _config["filerepository_path"]; 
+            var fileRepository = new FileRepository(fileRepositoryPath, _serializer, _client);
+            var moduleRepositoryPath = Path.Combine(fileRepositoryPath, "modules");
+            var moduleRepository = new NuGetRepository(moduleRepositoryPath, _serializer, _client, fileRepository);
             var moduleCachePath = Path.Combine(_config["work_path"], "modules");
             _moduleCache = new ModuleCache(moduleCachePath, moduleRepository);
             Listen();
@@ -77,7 +79,28 @@ namespace Ricotta.Agent
 
         private void HandleExecuteModuleMethod(ExecuteModuleMethod executeModuleMethod)
         {
-            Log.Debug($"{executeModuleMethod.Module}.{executeModuleMethod.Method}");
+            var moduleMethodString = $"{executeModuleMethod.Module}.{executeModuleMethod.Method}";
+            Log.Debug(moduleMethodString);
+            var moduleLoaded = _moduleCache.ModuleLoaded(executeModuleMethod.Module);
+            if (!moduleLoaded)
+            {
+                moduleLoaded = _moduleCache.LoadModule(executeModuleMethod.Module);
+            }
+            if (moduleLoaded)
+            {
+                try
+                {
+                    _moduleCache.Invoke(executeModuleMethod.Module, executeModuleMethod.Method, executeModuleMethod.Arguments);
+                }
+                catch(Exception e)
+                {
+                    Log.Error($"Error while executing {moduleMethodString}: {e.StackTrace}");
+                }
+            }
+            else
+            {
+                Log.Error($"Module {executeModuleMethod.Module} does not exist or there was a problem loading it");
+            }
         }
 
         private Rsa GetRsaKeys()
