@@ -7,6 +7,7 @@ using Ricotta.Transport;
 using Ricotta.Transport.Messages.Application;
 using Serilog;
 using NuGet.Versioning;
+using Common.Transport;
 
 namespace Ricotta.Master
 {
@@ -20,6 +21,7 @@ namespace Ricotta.Master
         private readonly SessionCache _sessionCache;
         private readonly ClientAuthInfoCache _clientAuthInfoCache;
         private readonly FileRepository _fileRepository;
+        private AppServer _appServer;
 
         public Worker(int workerId,
                         string workersUrl,
@@ -44,52 +46,21 @@ namespace Ricotta.Master
         private void Run()
         {
             Log.Debug($"Started Worker {_workerId}");
-            var server = new Server(_serializer, _rsa, _publisher, _sessionCache, _clientAuthInfoCache, _workersUrl);
-            server.OnApplicationDataReceived(ProcessApplicationMessages);
-            server.Listen();
+            _appServer = new AppServer(_serializer, _rsa, _publisher, _sessionCache, _clientAuthInfoCache, _workersUrl);
+            _appServer.OnAgentFileInfoReceived(HandleAgentFileInfo);
+            _appServer.OnAgentFileChunkReceived(HandleAgentFileChunk);
+            _appServer.OnAgentModuleInfoReceived(HandleAgentModuleInfo);
+            _appServer.OnAgentJobLogReceived(HandleAgentJobLog);
+            _appServer.OnAgentJobResultReceived(HandleAgentJobResult);
+            _appServer.OnCommandAgentListReceived(HandleCommandAgentList);
+            _appServer.OnCommandAgentAcceptReceived(HandleCommandAgentAccept);
+            _appServer.OnCommandAgentDenyReceived(HandleCommandAgentDeny);
+            _appServer.OnCommandRunDeploymentReceived(HandleCommandRunDeployment);
+            _appServer.Listen();
         }
 
-        private byte[] ProcessApplicationMessages(byte[] message)
+        private ApplicationMessage HandleAgentFileInfo(AgentFileInfo agentFileInfo)
         {
-            var applicationMessage = _serializer.Deserialize<ApplicationMessage>(message);
-            Log.Debug($"Received application message of type {applicationMessage.Type}");
-            ApplicationMessage response = null;
-            switch (applicationMessage.Type)
-            {
-                case ApplicationMessageType.AgentFileInfo:
-                    response = HandleAgentFileInfo(applicationMessage);
-                    break;
-                case ApplicationMessageType.AgentFileChunk:
-                    response = HandleAgentFileChunk(applicationMessage);
-                    break;
-                case ApplicationMessageType.AgentModuleInfo:
-                    response = HandleAgentModuleInfo(applicationMessage);
-                    break;
-                case ApplicationMessageType.AgentJobLog:
-                    response = HandleAgentJobLog(applicationMessage);
-                    break;
-                case ApplicationMessageType.AgentJobResult:
-                    response = HandleAgentJobResult(applicationMessage);
-                    break;
-                case ApplicationMessageType.CommandAgentList:
-                    response = HandleCommandAgentList(applicationMessage);
-                    break;
-                case ApplicationMessageType.CommandAgentAccept:
-                    response = HandleCommandAgentAccept(applicationMessage);
-                    break;
-                case ApplicationMessageType.CommandAgentDeny:
-                    response = HandleCommandAgentDeny(applicationMessage);
-                    break;
-                case ApplicationMessageType.CommandRunDeployment:
-                    response = HandleCommandRunDeployment(applicationMessage);
-                    break;
-            }
-            return _serializer.Serialize<ApplicationMessage>(response);
-        }
-
-        private ApplicationMessage HandleAgentFileInfo(ApplicationMessage applicationMessage)
-        {
-            var agentFileInfo = _serializer.Deserialize<AgentFileInfo>(applicationMessage.Data);
             FileInfo fileInfo = null;
             string sha256 = null;
             try
@@ -99,27 +70,14 @@ namespace Ricotta.Master
             }
             catch (FileNotFoundException)
             {
-                return GetMasterError("File not found");
+                return _appServer.GetMasterError("File not found");
             }
-
-            var masterFileInfo = new MasterFileInfo
-            {
-                Size = fileInfo.Length,
-                IsDirectory = (fileInfo.Attributes & FileAttributes.Directory) == FileAttributes.Directory,
-                Sha256 = sha256
-            };
-            var masterFileInfoBytes = _serializer.Serialize<MasterFileInfo>(masterFileInfo);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterFileInfo,
-                Data = masterFileInfoBytes
-            };
-            return responseApplicationMessage;
+            var isDirectory = (fileInfo.Attributes & FileAttributes.Directory) == FileAttributes.Directory;
+            return _appServer.GetMasterFileInfo(fileInfo.Length, isDirectory, sha256);
         }
 
-        private ApplicationMessage HandleAgentFileChunk(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleAgentFileChunk(AgentFileChunk agentFileChunk)
         {
-            var agentFileChunk = _serializer.Deserialize<AgentFileChunk>(applicationMessage.Data);
             byte[] chunk;
             try
             {
@@ -127,63 +85,34 @@ namespace Ricotta.Master
             }
             catch (FileNotFoundException)
             {
-                return GetMasterError("File not found");
+                return _appServer.GetMasterError("File not found");
             }
-
-            var masterFileChunk = new MasterFileChunk
-            {
-                Data = chunk
-            };
-            var masterFileChunkBytes = _serializer.Serialize<MasterFileChunk>(masterFileChunk);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterFileChunk,
-                Data = masterFileChunkBytes
-            };
-            return responseApplicationMessage;
+            return _appServer.GetMasterFileChunk(chunk);
         }
 
-        private ApplicationMessage HandleAgentModuleInfo(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleAgentModuleInfo(AgentModuleInfo agentModuleInfo)
         {
-            var agentModuleInfo = _serializer.Deserialize<AgentModuleInfo>(applicationMessage.Data);
             var moduleRepositoryPath = Path.Combine(_fileRepository.Path, "modules");
             var modulePath = Path.Combine(moduleRepositoryPath, agentModuleInfo.ModuleName);
             var latestVersionPackagePath = NuGetPackageVersion.GetLatestVersionPackagePath(modulePath);
             if (latestVersionPackagePath == null)
             {
-                return GetMasterError($"Module does not exist");
+                return _appServer.GetMasterError($"Module does not exist");
             }
-
-            var masterModuleInfo = new MasterModuleInfo
-            {
-                FileUri = latestVersionPackagePath.Replace(_fileRepository.Path, "").Substring(1)
-            };
-            var masterModuleInfoBytes = _serializer.Serialize<MasterModuleInfo>(masterModuleInfo);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterModuleInfo,
-                Data = masterModuleInfoBytes
-            };
-            return responseApplicationMessage;
+            var fileUri = latestVersionPackagePath.Replace(_fileRepository.Path, "").Substring(1);
+            return _appServer.GetMasterModuleInfo(fileUri);
         }
 
-        private ApplicationMessage HandleAgentJobLog(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleAgentJobLog(AgentJobLog agentJobLog)
         {
-            var agentJobLog = _serializer.Deserialize<AgentJobLog>(applicationMessage.Data);
             Log.Information(agentJobLog.Message);
             var masterJobLog = new MasterJobLog { };
             var masterJobLogBytes = _serializer.Serialize<MasterJobLog>(masterJobLog);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterJobLog,
-                Data = masterJobLogBytes
-            };
-            return responseApplicationMessage;
+            return _appServer.GetMasterJobLog();
         }
 
-        private ApplicationMessage HandleAgentJobResult(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleAgentJobResult(AgentJobResult agentJobResult)
         {
-            var agentJobResult = _serializer.Deserialize<AgentJobResult>(applicationMessage.Data);
             var result = "Success";
             if (agentJobResult.ErrorCode != 0)
             {
@@ -198,90 +127,36 @@ namespace Ricotta.Master
             {
                 Log.Information($"{agentJobResult.AgentId} : Job ID {agentJobResult.JobId} : Result : {agentJobResult.ResultData}");
             }
-            var masterJobResult = new MasterJobResult { };
-            var masterJobResultBytes = _serializer.Serialize<MasterJobResult>(masterJobResult);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterJobResult,
-                Data = masterJobResultBytes
-            };
-            return responseApplicationMessage;
+            return _appServer.GetMasterJobResult();
         }
 
-        private ApplicationMessage HandleCommandAgentList(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleCommandAgentList(CommandAgentList commandAgentList)
         {
-            var commandAgentList = _serializer.Deserialize<CommandAgentList>(applicationMessage.Data);
             var clientAuthInfoList = _clientAuthInfoCache.GetList().Where(x => x.ClientId != "!").ToList();
-            var masterAgentList = new MasterAgentList
-            {
-                Agents = clientAuthInfoList
-            };
-            var masterAgentListBytes = _serializer.Serialize<MasterAgentList>(masterAgentList);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterAgentList,
-                Data = masterAgentListBytes
-            };
-            return responseApplicationMessage;
+            return _appServer.GetMasterAgentList(clientAuthInfoList);
         }
 
-        private ApplicationMessage HandleCommandAgentAccept(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleCommandAgentAccept(CommandAgentAccept commandAgentAccept)
         {
-            var commandAgentAccept = _serializer.Deserialize<CommandAgentAccept>(applicationMessage.Data);
             var acceptedIds = new List<string>();
             _clientAuthInfoCache.AcceptById(commandAgentAccept.Selector);
             acceptedIds.Add(commandAgentAccept.Selector);
-            var masterAgentAccept = new MasterAgentAccept
-            {
-                Agents = acceptedIds
-            };
-            var masterAgentAcceptBytes = _serializer.Serialize<MasterAgentAccept>(masterAgentAccept);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterAgentAccept,
-                Data = masterAgentAcceptBytes
-            };
-            return responseApplicationMessage;
+            return _appServer.GetMasterAgentAccept(acceptedIds);
         }
 
-        private ApplicationMessage HandleCommandAgentDeny(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleCommandAgentDeny(CommandAgentDeny commandAgentDeny)
         {
-            var commandAgentDeny = _serializer.Deserialize<CommandAgentDeny>(applicationMessage.Data);
             var deniedIds = new List<string>();
             _clientAuthInfoCache.DenyById(commandAgentDeny.Selector);
             deniedIds.Add(commandAgentDeny.Selector);
-            var masterAgentDeny = new MasterAgentDeny
-            {
-                Agents = deniedIds
-            };
-            var masterAgentDenyBytes = _serializer.Serialize<MasterAgentDeny>(masterAgentDeny);
-            var responseApplicationMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterAgentDeny,
-                Data = masterAgentDenyBytes
-            };
-            return responseApplicationMessage;
+            return _appServer.GetMasterAgentDeny(deniedIds);
         }
 
-        private ApplicationMessage HandleCommandRunDeployment(ApplicationMessage applicationMessage)
+        private ApplicationMessage HandleCommandRunDeployment(CommandRunDeployment commandRunDeployment)
         {
-            var commandRunDeployment = _serializer.Deserialize<CommandRunDeployment>(applicationMessage.Data);
             Log.Debug($"Run Deployment: {commandRunDeployment.DeploymentYaml}");
-            return null;
+            return _appServer.GetMasterRunDeployment();
         }
 
-        private ApplicationMessage GetMasterError(string errorMessage)
-        {
-            var masterError = new MasterError
-            {
-                ErrorMessage = errorMessage
-            };
-            var masterErrorMessage = new ApplicationMessage
-            {
-                Type = ApplicationMessageType.MasterError,
-                Data = _serializer.Serialize<MasterError>(masterError)
-            };
-            return masterErrorMessage;
-        }
     }
 }
