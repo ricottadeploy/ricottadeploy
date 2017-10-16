@@ -30,7 +30,8 @@ namespace Ricotta.Transport
             _socket.Bind(publishUri);
         }
 
-        public void SendExecuteModuleMethod(string selector,
+        public void SendExecuteModuleMethod(string environment,
+                                            string selector,
                                             byte[] aesIv,
                                             string jobId,
                                             string module,
@@ -48,6 +49,7 @@ namespace Ricotta.Transport
             var encryptedExecuteModuleMethodBytes = Aes.Encrypt(executeModuleMethodBytes, _aes.Key, aesIv);
             var publishMessage = new PublishMessage
             {
+                Environment = environment,
                 Selector = selector,
                 AesIv = aesIv,
                 Type = PublishMessageType.ExecuteModuleMethod,

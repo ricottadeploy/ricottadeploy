@@ -9,17 +9,23 @@ using Serilog;
 using Ricotta.Transport.Messages.Publish;
 using Ricotta.Transport.Messages.Application;
 using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
+using Ricotta.Common.Expressions;
 
 namespace Ricotta.Agent
 {
     public class Agent : IAgent
     {
         private string _agentId;
+        private string _agentEnvironment;
+        private List<string> _agentRoles;
         private readonly IConfigurationRoot _config;
         private readonly ISerializer _serializer;
         private readonly Rsa _rsa;
         private AppClient _appClient;
         private ModuleCache _moduleCache;
+        private AgentInfo _agentInfo;
 
         public Agent(IConfigurationRoot config,
                         ISerializer serializer)
@@ -38,6 +44,16 @@ namespace Ricotta.Agent
             var maxAttempts = int.Parse(_config["authentication:max_attempts"]);
             var timeoutMs = 2000;
             _agentId = _config["id"];
+            _agentEnvironment = _config["environment"];
+            _agentRoles = _config.GetSection("roles").GetChildren().Select(x => x.Value).ToList();
+            _agentRoles.Add(_agentId);
+            Log.Debug($"Id: {_agentId}");
+            Log.Debug("Roles:");
+            foreach (var role in _agentRoles)
+            {
+                Log.Debug($"    {role}");
+            }
+            _agentInfo = new AgentInfo(_agentEnvironment, _agentId, _agentRoles);
             _appClient = new AppClient(_serializer, _rsa, _agentId, reqServerUrl);
             int attempt = 0;
             for (attempt = 0; attempt < maxAttempts; attempt++)
@@ -73,7 +89,7 @@ namespace Ricotta.Agent
         private void Listen()
         {
             var publishUrl = _config["master:publish_url"];
-            var subscriber = new Subscriber(_serializer, _appClient.GetMasterPublishKey(), _agentId, publishUrl);
+            var subscriber = new Subscriber(_serializer, _appClient.GetMasterPublishKey(), _agentInfo, publishUrl);
             subscriber.SetExecuteModuleMethodHandler(HandleExecuteModuleMethod);
             Log.Debug($"Subscribing to master at {publishUrl}");
             subscriber.Listen();

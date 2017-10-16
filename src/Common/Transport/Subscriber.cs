@@ -4,6 +4,7 @@ using NetMQ.Sockets;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport.Messages.Publish;
+using Ricotta.Common.Expressions;
 
 namespace Ricotta.Transport
 {
@@ -15,15 +16,16 @@ namespace Ricotta.Transport
         private ISerializer _serializer;
         private byte[] _aesKey;
         private SubscriberSocket _socket;
-        private string _clientId;
+        private AgentInfo _agentInfo;
 
         public Subscriber(ISerializer serializer,
                             byte[] aesKey,
-                            string clientId,
+                            AgentInfo agentInfo,
                             string publishUri)
         {
             _serializer = serializer;
             _aesKey = aesKey;
+            _agentInfo = agentInfo;
             _socket = new SubscriberSocket();
             _socket.Connect(publishUri);
             _socket.SubscribeToAnyTopic();
@@ -32,11 +34,12 @@ namespace Ricotta.Transport
 
         public void Listen()
         {
+            var targetExpression = new TargetExpression(_agentInfo);
             while (true)
             {
                 var publishMessageBytes = Receive();
                 var publishMessage = _serializer.Deserialize<PublishMessage>(publishMessageBytes);
-                if (publishMessage.Selector == "*" || publishMessage.Selector == _clientId)
+                if (targetExpression.Evaluate(publishMessage.Environment, publishMessage.Selector))
                 {
                     var decryptedMessageBytes = Aes.Decrypt(publishMessage.Data, _aesKey, publishMessage.AesIv);
                     if (publishMessage.Type == PublishMessageType.ExecuteModuleMethod)

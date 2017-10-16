@@ -16,10 +16,10 @@ namespace Ricotta.Master
             while (true)
             {
                 Log.Debug("Publising Test.Ping");
-                _publisher.SendExecuteModuleMethod("*", Aes.Create().IV, $"test-{DateTime.Now.ToString("yyyyMMddHHmmss")}", "Test", "Ping", new object[] { "hello from master" });
-                Thread.Sleep(10000);
-                _publisher.SendExecuteModuleMethod("*", Aes.Create().IV, $"test-{DateTime.Now.ToString("yyyyMMddHHmmss")}", "Test", "Ping", new object[] { 123 });
-                Thread.Sleep(10000);
+                _publisher.SendExecuteModuleMethod("dev", "!secret", Aes.Create().IV, $"test-{DateTime.Now.ToString("yyyyMMddHHmmss")}", "Test", "Ping", new object[] { "hello from master" });
+                Thread.Sleep(5000);
+                //_publisher.SendExecuteModuleMethod("prod", "agent-1", Aes.Create().IV, $"test-{DateTime.Now.ToString("yyyyMMddHHmmss")}", "Test", "Ping", new object[] { 123 });
+                //Thread.Sleep(10000);
             }
         }
     }
