@@ -5,7 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace Common.Expressions
+namespace Ricotta.Common.Expressions
 {
     public class EnvironmentExpression
     {
