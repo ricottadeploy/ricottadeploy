@@ -1,0 +1,12 @@
+dbpassword:
+    - value: "TestPassword"
+      env: dev | test
+      role: web | secret
+      step_id: scfportal | tfgportal
+      step_tag: web 
+dbpassword2:
+    - value: "ProdPassword"
+      env: prod
+      role: web | secret
+      step_id: scfportal | tfgportal
+      step_tag: web 

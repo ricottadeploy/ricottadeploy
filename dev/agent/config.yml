@@ -1,4 +1,8 @@
+environment: dev
 id: agent-1
+roles: 
+    - web
+    - database
 logging:
   level: debug
 master:

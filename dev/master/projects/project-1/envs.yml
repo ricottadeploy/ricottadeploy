@@ -1,0 +1,12 @@
+prod:
+    agent-1: 
+        fingerprint: "a2:d3:g4:..."
+        roles:
+            - web
+            - database
+    agent-2: 
+        fingerprint: "a2:d3:g4:..."
+        deny: true
+dev:
+    agent-2: 
+        fingerprint: "a2:d3:g4:..."

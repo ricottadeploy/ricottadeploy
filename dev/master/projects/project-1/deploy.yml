@@ -1,0 +1,7 @@
+scfportal:
+    target: agent-1 | web | !database | web & secret
+    tags: web, secret
+    run: Package.Install
+    args:
+        id: Epp.SCFPortal
+        version: latest
