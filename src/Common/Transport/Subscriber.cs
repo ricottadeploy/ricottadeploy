@@ -4,7 +4,7 @@ using NetMQ.Sockets;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport.Messages.Publish;
-using Ricotta.Common.Expressions;
+using Ricotta.Expressions;
 
 namespace Ricotta.Transport
 {

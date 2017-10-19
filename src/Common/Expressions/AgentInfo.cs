@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Ricotta.Common.Expressions
+namespace Ricotta.Expressions
 {
     public class AgentInfo
     {

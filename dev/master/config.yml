@@ -5,5 +5,6 @@ workers: 10
 bind:
   publish_url: tcp://*:5556
   request_url: tcp://*:5557
+master_path: C:\ricottadev\master
 keys_path: C:\ricottadev\master\keys
 filerepository_path: C:\ricottadev\master\files

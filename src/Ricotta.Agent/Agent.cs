@@ -7,11 +7,10 @@ using Ricotta.Serialization;
 using Ricotta.Transport;
 using Serilog;
 using Ricotta.Transport.Messages.Publish;
-using Ricotta.Transport.Messages.Application;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
-using Ricotta.Common.Expressions;
+using Ricotta.Expressions;
 
 namespace Ricotta.Agent
 {

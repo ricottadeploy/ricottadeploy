@@ -7,6 +7,7 @@ using Serilog;
 using Ricotta.Cryptography;
 using Ricotta.Serialization;
 using Ricotta.Transport;
+using Ricotta.Deployment;
 
 namespace Ricotta.Master
 {
@@ -21,6 +22,7 @@ namespace Ricotta.Master
         private SessionCache _sessionCache;
         private ClientAuthInfoCache _clientAuthInfoCache;
         private FileRepository _fileRepository;
+        private EnvironmentConfig _environmentConfig;
 
         public Master(IConfigurationRoot config,
                         ISerializer serializer)
@@ -33,6 +35,9 @@ namespace Ricotta.Master
             _sessionCache = new SessionCache();
             _clientAuthInfoCache = new ClientAuthInfoCache();
             _fileRepository = new FileRepository(_config["filerepository_path"]);
+            _environmentConfig = new EnvironmentConfig();
+            var environmentsFile = Path.Combine(_config["master_path"], "data", "environments.yml");
+            _environmentConfig.ReadFromYamlFile(environmentsFile);
             LoadPreAcceptedAgents();
         }
 
@@ -73,9 +78,9 @@ namespace Ricotta.Master
         private Rsa GetRsaKeys()
         {
             Rsa rsa = null;
-            var keysPath = _config["keys_path"];
-            var privatePemFilename = Path.Combine(keysPath, "master", "private.pem");
-            var publicPemFilename = Path.Combine(keysPath, "master", "public.pem");
+            var keysPath = Path.Combine(_config["master_path"], "keys");
+            var privatePemFilename = Path.Combine(keysPath, "private.pem");
+            var publicPemFilename = Path.Combine(keysPath, "public.pem");
             if (File.Exists(privatePemFilename))
             {
                 Log.Information($"Loading RSA keys from {privatePemFilename}");
@@ -95,16 +100,23 @@ namespace Ricotta.Master
 
         private void LoadPreAcceptedAgents()
         {
-            var keysPath = _config["keys_path"];
-            var agentKeysPath = Path.Combine(keysPath, "agent");
-            var agentPublicKeyFiles = Directory.GetFiles(agentKeysPath, "*.pem");
-            foreach (var agentPublicKeyFile in agentPublicKeyFiles)
+            foreach (var environment in _environmentConfig.Environments)
             {
-                var agentId = Path.GetFileNameWithoutExtension(agentPublicKeyFile);
-                var agentPublicPem = File.ReadAllText(agentPublicKeyFile);
-                var agentRsa = Rsa.CreateFromPublicPEM(agentPublicPem);
-                _clientAuthInfoCache.Add(agentRsa.Fingerprint, agentId, ClientStatus.Accepted);
-                Log.Information($"Trusted agent {agentId} with RSA fingerprint {agentRsa.Fingerprint}");
+                var agentConfigs = environment.Value;
+                if (agentConfigs != null)
+                {
+                    foreach (var agentConfig in agentConfigs)
+                    {
+                        if (agentConfig.deny == true)
+                        {
+                            _clientAuthInfoCache.Add(agentConfig.fingerprint, agentConfig.id, ClientStatus.Denied);
+                        }
+                        else
+                        {
+                            _clientAuthInfoCache.Add(agentConfig.fingerprint, agentConfig.id, ClientStatus.Accepted);
+                        }
+                    }
+                }
             }
         }
 

@@ -1,13 +1,13 @@
-﻿using Ricotta.Common.Expressions;
+﻿using Ricotta.Expressions;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using YamlDotNet.Serialization;
 
-namespace Common.Deployment
+namespace Ricotta.Deployment
 {
-    public class VariableList
+    public class Variables
     {
         private class VariableValue
         {
@@ -22,7 +22,7 @@ namespace Common.Deployment
 
         private Dictionary<string, List<VariableValue>> _variables = new Dictionary<string, List<VariableValue>>();
 
-        public VariableList(string environment)
+        public Variables(string environment)
         {
             _environment = environment;
         }

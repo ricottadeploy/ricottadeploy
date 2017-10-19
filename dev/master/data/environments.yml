@@ -1,0 +1,8 @@
+prod:
+dev:
+  - id: agent-1 
+    fingerprint: "b0:60:20:4d:0b:96:67:7a:00:59:dd:21:85:9a:ae:62"
+    roles:
+      - web
+      - us-region
+    deny: false
